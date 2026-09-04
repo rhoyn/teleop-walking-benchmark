@@ -30,6 +30,8 @@ const double CLOBOT_CONTROL_DT = 0.02;
 
 const int CLOBOT_OWNED_END = 15;
 
+const int CLOBOT_WITH_ARMS_OWNED_END = NUM_MOTOR;
+
 const double CLOBOT_ACTION_SCALE_ISAAC[29] = {
     0.548, 0.548, 0.548, 0.351, 0.351, 0.439,  0.548,  0.548,  0.439, 0.351,
     0.351, 0.439, 0.439, 0.439, 0.439, 0.439,  0.439,  0.439,  0.439, 0.439,
@@ -88,6 +90,7 @@ const Limits LIMITS = Limits{
 };
 
 struct Clobot {
+  int owned_end_ = CLOBOT_OWNED_END;
   bool pos_reached_ = false;
   bool yaw_reached_ = false;
   std::shared_ptr<Engine> engine_;
@@ -249,13 +252,14 @@ Output policy_step(
         a * CLOBOT_ACTION_SCALE_ISAAC[i] + CLOBOT_DEFAULT_ISAAC[i];
     out.kp[sdk] = static_cast<float>(CLOBOT_KPS_SDK[sdk]);
     out.kd[sdk] = static_cast<float>(CLOBOT_KDS_SDK[sdk]);
-    out.owns[sdk] = sdk < CLOBOT_OWNED_END;
+    out.owns[sdk] = sdk < self.owned_end_;
   }
   return out;
 }
 
-std::shared_ptr<Clobot> policy_make() {
+std::shared_ptr<Clobot> policy_make(int owned_end) {
   const std::shared_ptr<Clobot> self = std::make_shared<Clobot>();
+  self->owned_end_ = owned_end;
   self->last_action_ = std::vector<float>(CLOBOT_NUM_ACTIONS, 0.0f);
 
   for (TermHistory& h : self->hist_) h.len = CLOBOT_HISTORY;
@@ -266,11 +270,23 @@ std::shared_ptr<Clobot> policy_make() {
 
 class Policy : public ModelPolicy {
  public:
-  void init() override { state_ = policy_make(); }
+  void init() override { state_ = policy_make(CLOBOT_OWNED_END); }
 
   Output step(const Input& in) override { return policy_step(*state_, in); }
 
   const char* name() const override { return "clobot"; }
+
+ private:
+  std::shared_ptr<Clobot> state_;
+};
+
+class WithArmsPolicy : public ModelPolicy {
+ public:
+  void init() override { state_ = policy_make(CLOBOT_WITH_ARMS_OWNED_END); }
+
+  Output step(const Input& in) override { return policy_step(*state_, in); }
+
+  const char* name() const override { return "clobot_with_arms"; }
 
  private:
   std::shared_ptr<Clobot> state_;

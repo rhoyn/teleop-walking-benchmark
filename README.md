@@ -136,6 +136,26 @@ draws.
 **`clobot` fails identically on every seed**: 5.3 s mean, median and worst, and
 not one scored target in five hundred tours. No run differed from any other.
 
+That figure is the tour's rule rather than the gait. `clobot` is the only
+checkpoint here trained as a whole-body policy whose balance depends on its own
+arm motion — its deploy config carries a per-joint action scale, `kp` and `kd`
+for all 29 joints, wrists included. This tour holds the arms for every
+candidate: whatever a policy leaves unowned sits at `DEFAULT_ANGLES` on the
+shared gains, and `clobot` is driven on the same 15 lower-body joints as the
+rest of the field. Take the upper body away and it topples in five seconds,
+every time. Parking the arms at its own nominal pose rather than
+`DEFAULT_ANGLES` recovers none of it — 5.9 s over 32 seeds — so what it wants is
+the arm swing, not the arm pose.
+
+In fairness to the checkpoint, the same weights are also wired up as
+`--policy clobot_with_arms`, owning all 29 joints, and run over the same seeds
+0-499: **6/500** complete, 1-3%, 73.8 s survived, 70.9 s median, 25.8 s worst,
+28.87 cm and 4.42°. That is deliberately not a row in the table above — the
+table is thirteen policies driving the lower body under one rule, and
+`clobot_with_arms` is a harness configuration rather than a fourteenth
+checkpoint — but it does put the completion count between `rl_lab` and `falcon`
+rather than at the bottom.
+
 **Low error does not mean good.** `run_residual` cannot strafe, reverse or turn
 in place — its command floor forces it forward at 0.5 m/s whenever it is off
 target, so it can only approach on an arc — and 516 cm is a policy that cannot
@@ -148,7 +168,8 @@ tour on average, where the punch ramp approaches its 600 N ceiling. Surviving
 the end of the tour is the discriminator, not tracking error.
 
 The runs behind this table are in [results/result.csv](results/result.csv), one
-row per run.
+row per run. `clobot_with_arms` is in that file too, five hundred rows that no
+line of the table above draws on.
 
 ## Inference
 

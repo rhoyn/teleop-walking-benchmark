@@ -4053,6 +4053,7 @@ const std::vector<float>& engine_run_single(
 const char* const POLICY_NAMES[] = {
     "asap",
     "clobot",
+    "clobot_with_arms",
     "falcon",
     "gr00t_wbc",
     "holosoma",
@@ -4096,6 +4097,8 @@ std::shared_ptr<ModelPolicy> make_policy(const char* name) {
   const std::string wanted = name == nullptr ? "" : name;
   if (wanted == "asap") return std::make_shared<asap::Policy>();
   if (wanted == "clobot") return std::make_shared<clobot::Policy>();
+  if (wanted == "clobot_with_arms")
+    return std::make_shared<clobot::WithArmsPolicy>();
   if (wanted == "falcon") return std::make_shared<falcon::Policy>();
   if (wanted == "gr00t_wbc") return std::make_shared<gr00t_wbc::Policy>();
   if (wanted == "holosoma") return std::make_shared<holosoma::Policy>();
