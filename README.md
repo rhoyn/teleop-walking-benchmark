@@ -65,36 +65,35 @@ not there — and `--csv FILE` only moves that somewhere else. A result that
 reached nothing but a terminal is a result nobody can pool later, so there is no
 flag to ask for the file and none to turn it off.
 
-The rows come in two kinds, told apart by the `kind` column, flushed as each run
-ends so an interrupted campaign keeps everything already finished. The header is
-written only to an empty file, and a file whose header does not match is refused
-rather than appended to, so a campaign resumes onto the same file but cannot
-interleave two schemas in one.
+**One row is one run**, flushed as it ends so an interrupted campaign keeps
+everything already finished. The header is written only to an empty file, and a
+file whose header does not match is refused rather than appended to, so a
+campaign resumes onto the same file but cannot interleave two schemas in one.
 
-A `run` row is the run itself — policy, seed, outcome, survival, targets scored
-and the two mean errors. **Those columns are what the table below is computed
-from and nothing else, so anything reading it must filter on `kind == run`
-first**; a run stopped part way is recorded as `interrupted` and is not a
-measurement.
+The row opens with the run itself — `policy`, `seed`, `outcome`, `survival_s`,
+`targets`, `pos_err_cm`, `yaw_err_deg` — which is what the published table is
+computed from and nothing else. The error columns are poolable across runs
+because `targets` travels beside them as the weight, and a run stopped part way
+is recorded as `interrupted` and is not a measurement.
 
-A `seg` row is one leg of the tour — one target's clock, opening when that
-target becomes the demand and closing when the demand moves on, so `segment` 5
-is the leg walked while target 5 was being asked for. Each carries two columns
-for each of five joint groups, in the same joint space, so the pair describes
-that one group and can be read together — what it burned, and how much of that
-went into fighting itself:
+What each leg of the tour cost follows as `s<i>_` columns, one block of ten per
+target clock, twelve blocks in all. A leg is one target's clock: `s5_` is the
+leg walked while target 5 was being asked for.
 
-- **`e_<group>_j`** is absolute mechanical work, the sum of `|τ·ω|·dt` over
-  every 1 ms physics step of the leg, in **joules**. The absolute value is
-  what makes it an actuator cost rather than a physics one — these motors burn
+- **`s<i>_e_<group>_j`** is absolute mechanical work, the sum of `|τ·ω|·dt` over
+  every 1 ms physics step of that leg, in joules. The absolute value is what
+  makes it an actuator cost rather than a physics one — these motors burn
   current holding a limb against gravity whichever way it is moving, and a
-  signed integral would let a leg swinging down pay back the leg that lifted
-  it.
-- **`v_<group>_krads2`** is how much the group shook: the total variation of
-  each joint's angular acceleration, the sum of `|α(t) − α(t−dt)|` over the
-  leg, added across the group, in **thousands of rad/s²**. Acceleration alone would rank a
-  policy that strides hard alongside one that shakes; differencing it first
-  leaves only the part that changes direction faster than walking does.
+  signed integral would let a leg swinging down pay back the leg that lifted it.
+- **`s<i>_v_<group>_krads2`** is how much the group shook: the total variation
+  of each joint's angular acceleration, the sum of `|α(t) − α(t−dt)|` over the
+  leg, added across the group, in thousands of rad/s².
+
+Both are summed at the 1 ms physics step rather than sampled at the 50 Hz
+control rate, because a policy that buzzes its ankles at 200 Hz is invisible to
+anything that only looks when the policy does. Every number is written to one
+decimal place, which is all any of them is worth, and the unit is in the column
+name.
 
 The twenty-nine joints are binned five ways, splitting proximal from distal in
 both limbs because that is where these joints genuinely differ — the proximal
@@ -109,26 +108,13 @@ are light, fast and where a policy's chatter shows up first:
 | `arms_upper` | shoulder pitch/roll/yaw, elbow — both sides | 8 |
 | `arms_lower` | wrist roll/pitch/yaw — both sides | 6 |
 
-Every number in the file is written to one decimal place, which is all any of
-them is worth, and the unit is in the column name.
-
-`t_start_s` and `t_end_s` are filled in **only on a leg that was cut short**. A
-whole leg's span follows from its index and the target clock, so writing it on
-every row would be a column of arithmetic the reader can do; where a run
-actually ended is the one time the file cannot reconstruct.
-
-Both are summed at the 1 ms physics step rather than sampled at the 50 Hz
-control rate, because a policy that buzzes its ankles at 200 Hz is invisible to
-anything that only looks when the policy does. Reading the two together is the
-point: on a typical leg the ankle pitch joints do the *least* work of any leg
-joint and vibrate the *most*, which is a policy holding its balance by
-chattering rather than by standing.
-
-Both are sums over the leg rather than rates, so they scale with its length.
-A leg the fall or the timeout cut short is still recorded — how much a policy
-was burning as it lost its footing is the interesting part — but it carries
-`full_window` 0 and covers less than a target clock, and pooling it with whole
-legs would understate both quantities.
+A run that fell leaves the legs it never reached empty, and **nothing marks
+which legs ran their full clock because nothing needs to.** Legs `0` to
+`targets - 1` each had their whole five seconds; a block present at index
+`targets` is the leg the run died in, running from `5 + 5 × targets` seconds to
+`survival_s`. Both quantities are sums over the leg rather than rates, so that
+last partial block covers less than a target clock and should be dropped before
+pooling.
 
 `--record DIR` writes `DIR/<policy>.mp4` at 50 fps, one frame per 0.02 s of
 simulated time, so playback is exactly real time however fast the run computed.

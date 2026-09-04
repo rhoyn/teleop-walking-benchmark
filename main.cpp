@@ -4416,30 +4416,30 @@ std::shared_ptr<ModelPolicy> make_policy(const char* name) {
  * starts empty, which makes resuming a campaign a matter of pointing
  * `--csv` at the same file again.
  *
- * Two kinds of row share the file, told apart by the `kind` column. A
- * `run` row is what the published table is computed from and nothing else:
- * `outcome` gives the completion count and its interval, `survival_s` the
- * mean, median and worst, and `pos_err_cm` and `yaw_err_deg` the error
+ * One row is one run and nothing else, so the file can be read straight
+ * into a frame and grouped by policy without first being filtered by row
+ * kind. `outcome` gives the completion count and its interval, `survival_s`
+ * the mean, median and worst, and `pos_err_cm` and `yaw_err_deg` the error
  * columns, poolable across runs because `targets` travels beside them as
  * the weight. The step timings a run measures are deliberately absent from
- * the table, so they are absent from here too, and `seed` is kept only so a
- * campaign can be checked for gaps and resumed. **Anything computing the
- * table must filter on `kind == run` first.**
+ * the published table, so they are absent from here too, and `seed` is kept
+ * only so a campaign can be checked for gaps and resumed.
  *
- * A `seg` row is one leg of the tour — one target's clock — carrying the
- * work each joint did and how much it shook while the robot walked it.
- * Energy is written in joules and vibration in thousands of rad/s^2, both
- * to one decimal place, which is all either is worth: a group's figures
- * span four orders of magnitude across the field, and the raw jerk sums run
- * to six digits before the decimal point means anything.
+ * What each leg of the tour cost follows as `s<i>_` columns, one block per
+ * target clock: the work each joint group did and how much it shook while
+ * the robot walked that leg. Energy is written in joules and vibration in
+ * thousands of rad/s^2, both to one decimal place, which is all either is
+ * worth: a group's figures span four orders of magnitude across the field,
+ * and the raw jerk sums run to six digits before the decimal point means
+ * anything. A run that fell leaves the legs it never reached empty.
  *
- * There are as many as the run reached, and they join onto the `run`
- * rows of the same policy and seed. A leg with `full_window` 0 was cut
- * short by the fall or the timeout that ended the run and covers less than
- * a target clock; pooling it with whole legs would understate both
- * quantities, so it is flagged rather than dropped.
+ * Nothing says here which legs ran their full clock, because nothing needs
+ * to. Legs `0` to `targets - 1` each had their whole five seconds; a block
+ * present at index `targets` is the leg the run died in, and it ran from
+ * that leg's start to `survival_s`. Writing a flag and two timestamps
+ * twelve times over would be a hundred and forty-four columns of arithmetic
+ * the reader can already do.
  *
- * The two kinds share one header, so each leaves the other's columns empty.
  * A file that already exists must have been written by this same header or
  * the append is refused: a campaign resumed after the scene or the metrics
  * changed would otherwise interleave two schemas in one file and quietly
@@ -4455,9 +4455,7 @@ class CsvLog {
    *         already holds a header this build would not have written
    * @exceptsafe basic
    */
-  explicit CsvLog(const std::string& path)
-      : header_(header_for()),
-        blanks_(2 * NUM_GROUPS + 3) {
+  explicit CsvLog(const std::string& path) : header_(header_for()) {
     const std::filesystem::path parent =
         std::filesystem::path(path).parent_path();
     if (!parent.empty()) {
@@ -4507,27 +4505,27 @@ class CsvLog {
       const Report& report
   ) {
     std::ostringstream line;
-    line << std::fixed;
-    line << "run," << report.policy << ',' << seed << ",,"
-         << outcome_name(report.outcome) << ',' << std::setprecision(1)
-         << report.duration_s << ',' << report.targets.size() << ','
-         << report.pos_err_cm << ',' << report.yaw_err_deg
-         << std::string(blanks_, ',') << '\n';
+    line << std::fixed << std::setprecision(1);
+    line << report.policy << ',' << seed << ',' << outcome_name(report.outcome)
+         << ',' << report.duration_s << ',' << report.targets.size() << ','
+         << report.pos_err_cm << ',' << report.yaw_err_deg;
 
-    for (const SegmentCost& leg : report.segments) {
-      line << "seg," << report.policy << ',' << seed << ',' << leg.index
-           << ",,,,,,";
-      line << std::setprecision(1);
-      if (leg.full_window) {
-        line << ',';
-      } else {
-        line << leg.t_start_s << ',' << leg.t_end_s;
+    for (int i = 0; i < WAYPOINTS; ++i) {
+      const SegmentCost* leg = nullptr;
+      for (const SegmentCost& s : report.segments) {
+        if (s.index == i) {
+          leg = &s;
+          break;
+        }
       }
-      line << ',' << (leg.full_window ? 1 : 0);
-      for (const double e : leg.group_energy_j) line << ',' << e;
-      for (const double v : leg.group_vibration) line << ',' << v / 1000.0;
-      line << '\n';
+      if (leg == nullptr) {
+        line << std::string(2 * NUM_GROUPS, ',');
+        continue;
+      }
+      for (const double e : leg->group_energy_j) line << ',' << e;
+      for (const double v : leg->group_vibration) line << ',' << v / 1000.0;
     }
+    line << '\n';
 
     const std::lock_guard<std::mutex> lock(mutex_);
     out_ << line.str();
@@ -4543,13 +4541,15 @@ class CsvLog {
    */
   static std::string header_for() {
     std::string header =
-        "kind,policy,seed,segment,outcome,survival_s,targets,pos_err_cm,"
-        "yaw_err_deg,t_start_s,t_end_s,full_window";
-    for (const char* group : GROUP_NAMES) {
-      header += ",e_" + std::string(group) + "_j";
-    }
-    for (const char* group : GROUP_NAMES) {
-      header += ",v_" + std::string(group) + "_krads2";
+        "policy,seed,outcome,survival_s,targets,pos_err_cm,yaw_err_deg";
+    for (int i = 0; i < WAYPOINTS; ++i) {
+      const std::string leg = "s" + std::to_string(i) + "_";
+      for (const char* group : GROUP_NAMES) {
+        header += "," + leg + "e_" + std::string(group) + "_j";
+      }
+      for (const char* group : GROUP_NAMES) {
+        header += "," + leg + "v_" + std::string(group) + "_krads2";
+      }
     }
     return header;
   }
@@ -4557,7 +4557,6 @@ class CsvLog {
   std::mutex mutex_;       ///< serialises the appends
   std::ofstream out_;      ///< the file, opened for append
   std::string header_;     ///< what this build writes and demands
-  size_t blanks_;          ///< per-leg columns a `run` row leaves empty
   bool existing_ = false;  ///< true if the file already had a header
 };
 
