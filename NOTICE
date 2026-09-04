@@ -1,0 +1,280 @@
+THIRD-PARTY NOTICES
+
+The MIT grant in LICENSE covers this repository's own work: main.cpp, the
+adapters under policies/*/policy.cpp, and the build and helper scripts. It
+does not cover the policy checkpoints, the robot description under assets/,
+or the bundled font. Those are third-party works under their own terms,
+recorded here.
+
+
+1. POLICY CHECKPOINTS
+-------------------------------------------------------------------------------
+
+Sixteen checkpoints across thirteen policies. Twelve are committed beside the
+policy that loads them. Four are not, because their upstreams grant no licence
+to redistribute them: ./download_weights.sh pulls those from the upstream
+repository, so you take them under the upstream's terms rather than under this
+repository's.
+
+Four further rows are ONNX conversions, written by ./export_onnx.py from the
+TorchScript checkpoints above them so that every policy can run on TensorRT.
+A conversion is a derivative of its source and carries the source's terms
+unchanged -- putting a weight in another container grants no right that did not
+already exist. So each conversion ships exactly where its source ships: amo's
+and rl_gym's are committed because their checkpoints are, and robomimic's is
+generated on your machine because its checkpoint is fetched rather than
+committed. Running robomimic therefore needs ./export_onnx.py after
+./download_weights.sh; the other twelve policies need neither.
+
+The sha256 column is the first four hex of the file's sha256 -- an identifier
+for this table, not an integrity check. `sha256sum policies/*/model*` gives the
+real thing. The twelve committed files verify against this record as committed,
+and ./download_weights.sh carries the full sha256 of the other four and refuses
+a download that does not match it.
+
+  amo  policies/amo/model.pt  6d86  Apache-2.0, sim only  committed
+  amo  policies/amo/model.onnx  0f4d  Apache-2.0, sim only  committed, from model.pt
+    OpenTeleVision/AMO, amo_jit.pt
+    https://github.com/OpenTeleVision/AMO
+
+  amo  policies/amo/model_adapter.pt  159c  Apache-2.0, sim only  committed
+  amo  policies/amo/model_adapter.onnx  7e24  Apache-2.0, sim only  committed, from model_adapter.pt
+    OpenTeleVision/AMO, adapter_jit.pt
+
+  asap  policies/asap/model.onnx  188a  MIT  committed
+    LeCAR-Lab/ASAP, .../model_6600.onnx
+    https://github.com/LeCAR-Lab/ASAP
+
+  clobot  policies/clobot/model.onnx  62a9  Apache-2.0  committed
+    ClOBOT/clobot_g1_walking_model, deploy/policy.onnx
+    https://huggingface.co/ClOBOT/clobot_g1_walking_model
+
+  falcon  policies/falcon/model.onnx  ffea  MIT  committed
+    LeCAR-Lab/FALCON, .../g1_29dof.onnx
+    https://github.com/LeCAR-Lab/FALCON
+
+  gr00t_wbc  policies/gr00t_wbc/model_walk.onnx  7c82  NVIDIA Open Model  committed
+    NVlabs/GR00T-WholeBodyControl, ...-Walk.onnx
+    https://github.com/NVlabs/GR00T-WholeBodyControl
+
+  gr00t_wbc  policies/gr00t_wbc/model_balance.onnx  f645  NVIDIA Open Model  committed
+    NVlabs/GR00T-WholeBodyControl, ...-Balance.onnx
+
+  holosoma  policies/holosoma/model.onnx  8346  Apache-2.0  committed
+    nepyope/holosoma_locomotion, fastsac_g1_29dof.onnx
+    https://huggingface.co/nepyope/holosoma_locomotion
+
+  homie  policies/homie/model.onnx  afe6  CC BY-NC, NON-COMMERCIAL  ./download_weights.sh
+    InternRobotics/OpenHomie, HomieDeploy/deploy.onnx
+    https://github.com/InternRobotics/OpenHomie
+
+  openwbt  policies/openwbt/model.onnx  e677  Apache-2.0  committed
+    GalaxyGeneralRobotics/OpenWBT, ckpts/loco.onnx
+    https://github.com/GalaxyGeneralRobotics/OpenWBT
+
+  rl_gym  policies/rl_gym/model.pt  cf66  BSD-3-Clause  committed
+  rl_gym  policies/rl_gym/model.onnx  860a  BSD-3-Clause  committed, from model.pt
+    unitreerobotics/unitree_rl_gym, deploy/pre_train/g1/motion.pt
+    https://github.com/unitreerobotics/unitree_rl_gym
+
+  rl_lab  policies/rl_lab/model.onnx  610c  Apache-2.0  committed
+    unitreerobotics/unitree_rl_lab, .../velocity/v0/exported/policy.onnx
+    https://github.com/unitreerobotics/unitree_rl_lab
+
+  rl_mjlab  policies/rl_mjlab/model.onnx  2a66  Apache-2.0  committed
+    unitreerobotics/unitree_rl_mjlab, .../velocity/v0/exported/policy.onnx
+    https://github.com/unitreerobotics/unitree_rl_mjlab
+
+  robomimic  policies/robomimic/model.pt  d1d9  NONE DECLARED  ./download_weights.sh
+  robomimic  policies/robomimic/model.onnx  edf6  NONE DECLARED  ./export_onnx.py, from model.pt
+    ccrpRepo/RoboMimic_Deploy, .../policy_29dof.pt
+    https://github.com/ccrpRepo/RoboMimic_Deploy
+
+  run_residual  policies/run_residual/model_cmg.onnx  e7d1  NONE DECLARED  ./download_weights.sh
+    PMY9527/RUN_DEPLOY, .../cmg_exported_new.onnx
+    https://github.com/PMY9527/RUN_DEPLOY
+
+  run_residual  policies/run_residual/model_residual.onnx  5124  NONE DECLARED  ./download_weights.sh
+    PMY9527/RUN_DEPLOY, .../residual/exported/point25.onnx
+
+Three flags worth reading twice:
+
+- homie is CC BY-NC. Research and non-commercial use only; a commercial build
+  must exclude it. It is fetched rather than committed, because an MIT
+  repository cannot sublicense a non-commercial network.
+
+- robomimic and run_residual declare no licence at all, which makes them
+  effectively all-rights-reserved. That is why they are fetched rather than
+  committed: this repository will not hand you a copy it has no right to hand
+  you. The Apache-2.0 LICENSE circulating alongside the RoboMimic weights
+  belongs to AMO, a different project.
+
+- amo is Apache-2.0 but sim-only by its authors' explicit request. The upstream
+  README warns against third-party hardware deployment, citing a sim-to-real
+  failure that damaged a robot.
+
+gr00t_wbc, the candidate that wins the campaign, is NVIDIA Open Model. If
+licence terms decide your build, openwbt (Apache-2.0) is the most permissive
+candidate with a competitive position error.
+
+
+2. UNITREE G1 ROBOT DESCRIPTION
+-------------------------------------------------------------------------------
+
+The Unitree G1 robot description — assets/g1_29dof.xml and all 36 meshes
+under assets/meshes/ — comes from unitree_rl_gym, at
+resources/robots/g1_description/, and is redistributed under the BSD 3-Clause
+license reproduced below.
+
+  https://github.com/unitreerobotics/unitree_rl_gym
+
+The 36 STL meshes are Modified Versions: every one is decimated to at most a
+thousand triangles and 50 KB, which takes the set from 22 MB to 1.7 MB. Twenty
+seven of them are collision geometry, and MuJoCo collides a mesh by its convex
+hull, so the decimation cuts the hulls from 34,643 vertices to 5,287 and a tour
+from 7.8 s to 5.8 s of physics. It also changes contact: the hulls are close to
+upstream's but not identical -- torso_link, the heaviest at 44,658 triangles,
+loses about 6 mm across a 215 mm span -- so results measured here are not
+comparable with results measured against the upstream meshes. Nothing but the
+surfaces changed; the kinematics, inertials and joint limits are upstream's.
+
+assets/g1_29dof.xml is a Modified Version: the simulation options and contact
+defaults this benchmark runs with were added, joint armature, damping and
+friction loss were filled in, and some collision geoms were made invisible.
+
+Unitree Robotics is not affiliated with this benchmark and has not endorsed
+it. The name and the logo mesh are theirs.
+
+-----------------------------------------------------------
+
+BSD 3-Clause License
+Copyright (c) 2016-2023 HangZhou YuShu TECHNOLOGY CO.,LTD. ("Unitree Robotics")
+All rights reserved.
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+3. JETBRAINS MONO
+-------------------------------------------------------------------------------
+
+This Font Software is Copyright 2020 The JetBrains Mono Project Authors
+(https://github.com/JetBrains/JetBrainsMono).
+
+It is licensed under the SIL Open Font License, Version 1.1, and is
+redistributed here under that license. The JetBrains Mono project does not
+declare a Reserved Font Name.
+
+The bundled assets/JetBrainsMono.ttf is JetBrains Mono Regular, version 2.211,
+reduced to the 394 glyphs this program renders. Under the terms below that
+makes it a Modified Version. It is used only to letter the policy name onto
+the floor of a recorded clip; it is not part of the benchmark and carries no
+license obligation onto the rest of this repository, which is MIT licensed;
+see LICENSE.
+
+The full license text follows, and is also available with a FAQ at
+https://scripts.sil.org/OFL
+
+-----------------------------------------------------------
+SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
+-----------------------------------------------------------
+
+PREAMBLE
+The goals of the Open Font License (OFL) are to stimulate worldwide
+development of collaborative font projects, to support the font creation
+efforts of academic and linguistic communities, and to provide a free and
+open framework in which fonts may be shared and improved in partnership
+with others.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The
+fonts, including any derivative works, can be bundled, embedded,
+redistributed and/or sold with any software provided that any reserved
+names are not used by derivative works. The fonts and derivatives,
+however, cannot be released under any other type of license. The
+requirement for fonts to remain under this license does not apply
+to any document created using the fonts or their derivatives.
+
+DEFINITIONS
+"Font Software" refers to the set of files released by the Copyright
+Holder(s) under this license and clearly marked as such. This may
+include source files, build scripts and documentation.
+
+"Reserved Font Name" refers to any names specified as such after the
+copyright statement(s).
+
+"Original Version" refers to the collection of Font Software components as
+distributed by the Copyright Holder(s).
+
+"Modified Version" refers to any derivative made by adding to, deleting,
+or substituting -- in part or in whole -- any of the components of the
+Original Version, by changing formats or by porting the Font Software to a
+new environment.
+
+"Author" refers to any designer, engineer, programmer, technical
+writer or other person who contributed to the Font Software.
+
+PERMISSION & CONDITIONS
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of the Font Software, to use, study, copy, merge, embed, modify,
+redistribute, and sell modified and unmodified copies of the Font
+Software, subject to the following conditions:
+
+1) Neither the Font Software nor any of its individual components,
+in Original or Modified Versions, may be sold by itself.
+
+2) Original or Modified Versions of the Font Software may be bundled,
+redistributed and/or sold with any software, provided that each copy
+contains the above copyright notice and this license. These can be
+included either as stand-alone text files, human-readable headers or
+in the appropriate machine-readable metadata fields within text or
+binary files as long as those fields can be easily viewed by the user.
+
+3) No Modified Version of the Font Software may use the Reserved Font
+Name(s) unless explicit written permission is granted by the corresponding
+Copyright Holder. This restriction only applies to the primary font name as
+presented to the users.
+
+4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
+Software shall not be used to promote, endorse or advertise any
+Modified Version, except to acknowledge the contribution(s) of the
+Copyright Holder(s) and the Author(s) or with their explicit written
+permission.
+
+5) The Font Software, modified or unmodified, in part or in whole,
+must be distributed entirely under this license, and must not be
+distributed under any other license. The requirement for fonts to
+remain under this license does not apply to any document created
+using the Font Software.
+
+TERMINATION
+This license becomes null and void if any of the above conditions are
+not met.
+
+DISCLAIMER
+THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
+OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
+COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
+DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
+OTHER DEALINGS IN THE FONT SOFTWARE.

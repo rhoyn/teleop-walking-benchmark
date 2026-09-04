@@ -1,0 +1,8 @@
+build/
+videos/
+__pycache__/
+policies/homie/model.onnx
+policies/robomimic/model.pt
+policies/robomimic/model.onnx
+policies/run_residual/model_cmg.onnx
+policies/run_residual/model_residual.onnx
