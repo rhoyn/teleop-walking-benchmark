@@ -971,7 +971,8 @@ struct Report {
   std::vector<SegmentCost> segments;  ///< what each leg of the tour cost
   double pos_err_cm = 0.0;            ///< mean position error, cm
   double yaw_err_deg = 0.0;           ///< mean absolute heading error, deg
-  double duration_s = 0.0;            ///< simulated seconds the run lasted
+  double duration_s = 0.0;            ///< simulated seconds on its own feet,
+                                      ///< measured from the crane's release
   double step_mean_us = 0.0;          ///< mean time in `step`, us
   double step_max_us = 0.0;           ///< worst time in `step`, us
 };
@@ -3113,6 +3114,7 @@ Report sim_run(
   WorldPose anchor{0.0, 0.0, 0.0};
   bool have_anchor = false;
   bool released = false;
+  double release_s = INIT_DURATION_S;
 
   Outcome outcome = Outcome::TIMEOUT;
   std::string detail;
@@ -3155,6 +3157,7 @@ Report sim_run(
       command = tick.command;
       if (!released && tick.phase != Phase::INIT) {
         released = true;
+        release_s = d->time;
         anchor = world;
         have_anchor = true;
         if (!config.quiet) {
@@ -3163,7 +3166,7 @@ Report sim_run(
         }
       }
       place_markers(h, tour, tick, anchor, have_anchor);
-      meter_mark(meter, tick.target, d->time);
+      meter_mark(meter, tick.target, d->time - release_s);
       if (tick.phase == Phase::DONE) {
         outcome = Outcome::COMPLETE;
         break;
@@ -3240,12 +3243,12 @@ Report sim_run(
   recorder_close(std::move(recorder));
   viewer_close(std::move(viewer));
 
-  meter_close(meter, d->time, false);
+  meter_close(meter, d->time - release_s, false);
 
   Report report = loop_report(*loop);
   report.outcome = outcome;
   report.detail = detail;
-  report.duration_s = d->time;
+  report.duration_s = std::max(0.0, d->time - release_s);
   report.segments = std::move(meter.done);
 
   return report_finalize(report);
