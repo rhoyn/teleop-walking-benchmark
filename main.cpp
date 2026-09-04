@@ -423,6 +423,18 @@ inline constexpr double RAMP_FLOOR = 1.0 / 3.0;
 inline constexpr double RAMP_S = 60.0;
 
 /**
+ * How long after a target becomes the demand its punch lands, in seconds.
+ *
+ * Five control steps. A punch simultaneous with the new waypoint would
+ * arrive before the policy had seen the target at all, so the two would
+ * read as one event and the disturbance would be measuring the handover
+ * rather than the walking. A tenth of a second is long enough that the
+ * policy has taken the new demand and started to act on it, and short
+ * enough that it is still the opening of the leg being disturbed.
+ */
+inline constexpr double PUNCH_DELAY_S = 0.1;
+
+/**
  * How long a punch pushes, in seconds.
  *
  * Four control periods: long enough that the policy sees the disturbance in
@@ -3095,7 +3107,7 @@ Report sim_run(
           : INIT_DURATION_S + tour_duration(tour) + TIMEOUT_MARGIN_S;
 
   // Drawn when the crane lets go rather than before the run, so that punch
-  // i lands exactly as leg i opens. The release is a control step at or
+  // i lands `PUNCH_DELAY_S` into leg i. The release is a control step at or
   // after INIT_DURATION_S, not the constant itself, and timing the campaign
   // from the constant would put the first punch on a robot the crane is
   // still holding. The draws are the seed's either way: only their clock
@@ -3167,7 +3179,7 @@ Report sim_run(
         punches = schedule_make(
             m,
             config.seed,
-            release_s + tour.config.lead_in_s,
+            release_s + tour.config.lead_in_s + PUNCH_DELAY_S,
             tour.config.point_s,
             static_cast<int>(tour.waypoints.size())
         );

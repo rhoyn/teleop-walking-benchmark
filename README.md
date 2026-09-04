@@ -165,7 +165,9 @@ would hand every policy the same three-second floor and flatter the worst of
 them most. The first target is demanded the moment the crane lets go, so a
 completed tour is exactly 60 s — twelve targets on a 5 s clock, the last of them
 closing on the minute. The punch campaign is drawn from the seed but timed from
-that same release, so punch *i* lands as leg *i* opens. Position and yaw errors are means over every target actually scored, so
+that same release, so punch *i* lands a tenth of a second into leg *i* — far
+enough in that the policy has taken the new demand and started to act on it, so
+the punch disturbs the walking rather than the handover. Position and yaw errors are means over every target actually scored, so
 a policy that falls early is judged only on the targets it reached — that
 flatters the short-lived candidates rather than penalising them. Step timings
 are deliberately absent: the sweeps shared the machine sixteen at a time, which
