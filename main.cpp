@@ -88,12 +88,18 @@ inline constexpr uint32_t DEFAULT_SEED = 0u;
 /**
  * Quiet time between the crane letting go and the first target, in seconds.
  *
- * A policy takes over from a stance it did not choose and most of the field
- * needs a step or two to settle. Scoring from the release would charge that
- * transient to the first waypoint, which says more about the handover than
- * about the policy.
+ * Zero: the first target is demanded the moment the crane lets go, so the
+ * tour is `WALK_S` from the release and its last leg closes exactly on it
+ * rather than two seconds late. Taking over from a stance it did not choose
+ * is part of the task, and a policy that needs a step or two to settle is
+ * one that will be late to the first waypoint — which is a thing worth
+ * scoring rather than a transient worth hiding.
+ *
+ * Kept as a constant rather than deleted because `TourConfig` still carries
+ * it and a scenario is free to ask for a quiet opening; nothing in the
+ * harness assumes it is zero.
  */
-inline constexpr double LEAD_IN_S = 2.0;
+inline constexpr double LEAD_IN_S = 0.0;
 
 /**
  * Radius of the disc the tour draws its targets from, in metres.
@@ -3088,13 +3094,13 @@ Report sim_run(
           ? config.max_seconds
           : INIT_DURATION_S + tour_duration(tour) + TIMEOUT_MARGIN_S;
 
-  const Schedule punches = schedule_make(
-      m,
-      config.seed,
-      INIT_DURATION_S + tour.config.lead_in_s,
-      tour.config.point_s,
-      static_cast<int>(tour.waypoints.size())
-  );
+  // Drawn when the crane lets go rather than before the run, so that punch
+  // i lands exactly as leg i opens. The release is a control step at or
+  // after INIT_DURATION_S, not the constant itself, and timing the campaign
+  // from the constant would put the first punch on a robot the crane is
+  // still holding. The draws are the seed's either way: only their clock
+  // moves, so a seed still faces the same campaign.
+  Schedule punches;
 
   MotorCommand command{};
   command.q_target.setZero();
@@ -3158,6 +3164,13 @@ Report sim_run(
       if (!released && tick.phase != Phase::INIT) {
         released = true;
         release_s = d->time;
+        punches = schedule_make(
+            m,
+            config.seed,
+            release_s + tour.config.lead_in_s,
+            tour.config.point_s,
+            static_cast<int>(tour.waypoints.size())
+        );
         anchor = world;
         have_anchor = true;
         if (!config.quiet) {

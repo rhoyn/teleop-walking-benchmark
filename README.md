@@ -111,7 +111,7 @@ are light, fast and where a policy's chatter shows up first:
 A run that fell leaves the legs it never reached empty, and **nothing marks
 which legs ran their full clock because nothing needs to.** Legs `0` to
 `targets - 1` each had their whole five seconds; a block present at index
-`targets` is the leg the run died in, running from `2 + 5 × targets` seconds to
+`targets` is the leg the run died in, running from `5 × targets` seconds to
 `survival_s`. Both quantities are sums over the leg rather than rates, so that
 last partial block covers less than a target clock and should be dropped before
 pooling.
@@ -162,8 +162,10 @@ Survival is sim seconds to the fall **measured from the crane's release**, not
 from the start of the simulation: the three seconds the crane spends ramping the
 robot to the shared pose are seconds it could not fall in, and counting them
 would hand every policy the same three-second floor and flatter the worst of
-them most. A completed tour is therefore 62 s — a 2 s lead-in and twelve targets
-on a 5 s clock. Position and yaw errors are means over every target actually scored, so
+them most. The first target is demanded the moment the crane lets go, so a
+completed tour is exactly 60 s — twelve targets on a 5 s clock, the last of them
+closing on the minute. The punch campaign is drawn from the seed but timed from
+that same release, so punch *i* lands as leg *i* opens. Position and yaw errors are means over every target actually scored, so
 a policy that falls early is judged only on the targets it reached — that
 flatters the short-lived candidates rather than penalising them. Step timings
 are deliberately absent: the sweeps shared the machine sixteen at a time, which
