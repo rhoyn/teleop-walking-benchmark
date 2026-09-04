@@ -32,6 +32,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <numeric>
 #include <optional>
 #include <random>
 #include <sstream>
@@ -62,6 +63,17 @@ inline std::atomic<bool> g_stop{false};
  * checkpoint produced it.
  */
 inline constexpr int NUM_MOTOR = 29;
+
+/**
+ * Where every run records itself, unless `--csv` names somewhere else.
+ *
+ * Relative to the working directory, like the scene the harness loads, and
+ * `run.sh` changes to the project root before exec-ing the binary. Every
+ * run appends here whether it was a sweep, a single seed or a watched
+ * preview: a result that only ever reached a terminal is a result nobody
+ * can pool later, and a run worth watching is a run worth keeping.
+ */
+inline const char* DEFAULT_CSV = "results/result.csv";
 
 /**
  * Seed used when `--seed` is absent.
@@ -96,20 +108,20 @@ inline constexpr double DEFAULT_RADIUS_M = 1.0;
 /**
  * Length of the scored walk, in simulated seconds.
  *
- * Long enough that the punch campaign reaches full force and that a policy
- * which drifts has time to show it; short enough that a hundred seeds
- * across the whole field still fits in a sitting.
+ * Long enough that the punch campaign climbs from its floor to full force
+ * and that a policy which drifts has time to show it; short enough that a
+ * hundred seeds across the whole field still fits in a sitting.
  */
-inline constexpr double WALK_S = 120.0;
+inline constexpr double WALK_S = 60.0;
 
 /**
  * Number of targets a tour visits.
  *
  * Only ever used to derive `POINT_S`. The tour itself is built from the
- * walk length and the target clock, so a run fills its full two minutes
+ * walk length and the target clock, so a run fills its full minute
  * however this is set.
  */
-inline constexpr int WAYPOINTS = 24;
+inline constexpr int WAYPOINTS = 12;
 
 /**
  * Time a target stays current before the next replaces it, in seconds.
@@ -385,14 +397,24 @@ inline constexpr double FORCE_MAX_N = 600.0;
 inline constexpr double FORCE_SCALE_MIN = 0.5;
 
 /**
- * Time over which punch force ramps from nothing to `FORCE_MAX_N`, in
- * seconds.
+ * Fraction of `FORCE_MAX_N` the punch ceiling starts at.
  *
- * Matched to the walk length, so the campaign is gentle while a policy is
- * still finding its feet and hardest at the end. A run that reaches the
- * last waypoint has faced the whole range.
+ * The campaign opens at a third rather than at nothing, so the first
+ * waypoints are already a disturbance a policy has to answer instead of a
+ * stretch of quiet walking that separates nobody.
  */
-inline constexpr double RAMP_S = 120.0;
+inline constexpr double RAMP_FLOOR = 1.0 / 3.0;
+
+/**
+ * Time over which the punch ceiling ramps from `RAMP_FLOOR` to
+ * `FORCE_MAX_N`, in seconds.
+ *
+ * Measured from the first punch and matched to the walk length, so the
+ * campaign is gentler while a policy is still finding its feet and hardest
+ * at the end. A run that reaches the last waypoint has faced the whole
+ * range.
+ */
+inline constexpr double RAMP_S = 60.0;
 
 /**
  * How long a punch pushes, in seconds.
@@ -496,6 +518,67 @@ inline const char* JOINT_NAMES[NUM_MOTOR] = {
     "right_wrist_pitch_joint",
     "right_wrist_yaw_joint"
 };
+
+/**
+ * How many bins the joints are reported in.
+ *
+ * Five rather than twenty-nine because the question a reader brings to this
+ * file is which part of the robot a policy is spending itself on, not which
+ * of three wrist axes. The per-joint detail exists for the length of a leg
+ * and is summed away before it is written.
+ */
+inline constexpr int NUM_GROUPS = 5;
+
+/**
+ * The bins, in the order their columns appear.
+ *
+ * Split proximal from distal in both limbs, because that is where these
+ * joints genuinely differ: the proximal ones carry the robot's weight and
+ * do nearly all the work, while the distal ones are light, fast and where
+ * a policy's chatter shows up first. Lumping an ankle in with a hip would
+ * hide exactly the contrast the two columns exist to show.
+ */
+inline const char* GROUP_NAMES[NUM_GROUPS] = {
+    "legs_upper",  ///< hips and knees, both sides
+    "legs_lower",  ///< ankles, both sides
+    "waist",       ///< the three waist axes
+    "arms_upper",  ///< shoulders and elbows, both sides
+    "arms_lower"   ///< wrists, both sides
+};
+
+/**
+ * Which bin each joint falls in, parallel to `JOINT_NAMES`.
+ */
+inline constexpr int JOINT_GROUP[NUM_MOTOR] = {
+    0, 0, 0, 0,  // left hip pitch, roll, yaw, knee
+    1, 1,        // left ankle pitch, roll
+    0, 0, 0, 0,  // right hip pitch, roll, yaw, knee
+    1, 1,        // right ankle pitch, roll
+    2, 2, 2,     // waist yaw, roll, pitch
+    3, 3, 3, 3,  // left shoulder pitch, roll, yaw, elbow
+    4, 4, 4,     // left wrist roll, pitch, yaw
+    3, 3, 3, 3,  // right shoulder pitch, roll, yaw, elbow
+    4, 4, 4      // right wrist roll, pitch, yaw
+};
+
+/**
+ * Every joint lands in a bin that exists, and every bin has a joint.
+ */
+constexpr bool groups_are_sound() {
+  int seen[NUM_GROUPS] = {};
+  for (const int g : JOINT_GROUP) {
+    if (g < 0 || g >= NUM_GROUPS) return false;
+    ++seen[g];
+  }
+  for (const int n : seen) {
+    if (n == 0) return false;
+  }
+  return true;
+}
+static_assert(
+    groups_are_sound(),
+    "every joint needs a bin and every bin a joint"
+);
 
 /**
  * Camera azimuth about the arena centre, in degrees.
@@ -835,6 +918,44 @@ struct TargetScore {
 };
 
 /**
+ * What one leg of the tour cost, joint by joint and body by body.
+ *
+ * A segment spans one target's clock: it opens when `index` becomes the
+ * demand and closes when the demand moves on, so segment 5 is the leg the
+ * robot walked while target 5 was being asked for, closed at the moment the
+ * demand changed to target 6. The lead-in before target 0 is not a segment,
+ * which keeps the segments one-for-one with the targets they are named
+ * after and joinable onto `TargetScore` by `index`.
+ *
+ * `full_window` is what separates a leg from a fragment. A run that falls
+ * part way through a leg still records it, because how much a policy was
+ * burning while it lost its footing is the interesting part, but the flag
+ * says plainly that the numbers cover less than a target clock and must not
+ * be pooled with legs that ran their course.
+ *
+ * Only a fragment carries timestamps. A whole leg's span follows from its
+ * index and the target clock, and writing it out on every row would be a
+ * column of arithmetic the reader can do; where a run ended is the one time
+ * the file cannot reconstruct.
+ */
+struct SegmentCost {
+  int index = -1;            ///< the target whose clock this leg spans
+  double t_start_s = 0.0;    ///< when that target became the demand, s
+  double t_end_s = 0.0;      ///< when it stopped being it, or the run ended, s
+  bool full_window = false;  ///< false if the run ended part way through
+
+  /// Absolute mechanical work per group over the leg, J, in `GROUP_NAMES`
+  /// order. Joules add, so a group's figure is its joints' work.
+  std::array<double, NUM_GROUPS> group_energy_j{};
+
+  /// Accumulated joint-space jerk per group over the leg, rad/s^2, in
+  /// `GROUP_NAMES` order and so paired one-for-one with `group_energy_j`.
+  /// Its joints' total variation added, which is how much the group shook
+  /// altogether rather than how much its worst joint did.
+  std::array<double, NUM_GROUPS> group_vibration{};
+};
+
+/**
  * What one policy's run is reduced to.
  *
  * `outcome` defaults to `ERROR` so that a run which throws before it can
@@ -843,15 +964,16 @@ struct TargetScore {
  * alone cannot show a policy that walked well until one punch.
  */
 struct Report {
-  std::string policy;                ///< policy name, as `name()` gives it
-  Outcome outcome = Outcome::ERROR;  ///< how the run ended
-  std::string detail;                ///< why, for everything but COMPLETE
-  std::vector<TargetScore> targets;  ///< every target actually scored
-  double pos_err_cm = 0.0;           ///< mean position error, cm
-  double yaw_err_deg = 0.0;          ///< mean absolute heading error, deg
-  double duration_s = 0.0;           ///< simulated seconds the run lasted
-  double step_mean_us = 0.0;         ///< mean time in `step`, us
-  double step_max_us = 0.0;          ///< worst time in `step`, us
+  std::string policy;                 ///< policy name, as `name()` gives it
+  Outcome outcome = Outcome::ERROR;   ///< how the run ended
+  std::string detail;                 ///< why, for everything but COMPLETE
+  std::vector<TargetScore> targets;   ///< every target actually scored
+  std::vector<SegmentCost> segments;  ///< what each leg of the tour cost
+  double pos_err_cm = 0.0;            ///< mean position error, cm
+  double yaw_err_deg = 0.0;           ///< mean absolute heading error, deg
+  double duration_s = 0.0;            ///< simulated seconds the run lasted
+  double step_mean_us = 0.0;          ///< mean time in `step`, us
+  double step_max_us = 0.0;           ///< worst time in `step`, us
 };
 
 /**
@@ -885,7 +1007,7 @@ struct SweepConfig {
   uint32_t first = 0;    ///< first seed, inclusive
   uint32_t last = 0;     ///< last seed, inclusive
   int parallel = 1;      ///< runs in flight at once
-  std::string csv;       ///< file to append rows to; empty for stdout only
+  std::string csv = DEFAULT_CSV;  ///< file every run appends to
 };
 
 /**
@@ -1152,6 +1274,148 @@ std::vector<int> targets(const mjModel* m) {
 }
 
 /**
+ * Accumulates what a leg of the tour costs, one physics step at a time.
+ *
+ * Two quantities, both summed over the 1 ms step rather than sampled at the
+ * 50 Hz control rate, because both are about what happens between control
+ * steps: a policy that buzzes its ankles at 200 Hz is invisible to anything
+ * that only looks when the policy does.
+ *
+ * Energy is absolute mechanical work, `sum |tau * omega| dt` per joint. The
+ * absolute value is what makes it an actuator cost rather than a physics
+ * one — these motors burn current holding a limb against gravity whichever
+ * way it is moving, and a signed integral would let a leg swinging down pay
+ * back the leg that lifted it and report a policy as free.
+ *
+ * Vibration is the total variation of each joint's angular acceleration,
+ * `sum |alpha(t) - alpha(t-dt)|`, which is jerk integrated over the leg. It
+ * is measured in the same space as the energy, so the two columns for a
+ * joint describe that one joint and can be read together: what it burned,
+ * and how much of that was spent fighting itself.
+ *
+ * Acceleration alone would rank a policy that strides hard alongside one
+ * that shakes; differencing it first leaves only the part that changes
+ * direction faster than walking does.
+ *
+ * Both are read straight after `mj_step`, so torque and velocity are the
+ * pair MuJoCo actually integrated with. The first two steps are spent
+ * filling the two finite differences and contribute to neither sum.
+ */
+struct CostMeter {
+  std::array<double, NUM_MOTOR> prev_qvel{};  ///< last joint velocity
+  std::array<double, NUM_MOTOR> prev_qacc{};  ///< last joint acceleration
+  int warmup = 0;                 ///< steps seen, capped once differences valid
+  bool open = false;              ///< true while a leg is being accumulated
+  SegmentCost leg;                ///< the leg being accumulated
+  std::vector<SegmentCost> done;  ///< legs already closed, in order
+};
+
+/**
+ * Build a meter sized to one scene.
+ *
+ * @param[in] m  the loaded scene
+ * @returns a meter with nothing accumulated and no leg open
+ * @exceptsafe basic
+ */
+CostMeter meter_make() { return CostMeter{}; }
+
+/**
+ * Start accumulating a new leg.
+ *
+ * @param[in,out] meter  the meter, with no leg open
+ * @param[in] index      the target whose clock this leg spans
+ * @param[in] t          simulated time the demand changed, s
+ * @exceptsafe basic
+ */
+void meter_open(
+    CostMeter& meter,
+    int index,
+    double t
+) {
+  meter.leg = SegmentCost{};
+  meter.leg.index = index;
+  meter.leg.t_start_s = t;
+  meter.open = true;
+}
+
+/**
+ * Close the open leg and keep it.
+ *
+ * @param[in,out] meter  the meter, with a leg open
+ * @param[in] t          simulated time the leg ended, s
+ * @param[in] full       true if the target's clock ran out, false if the
+ *                       run ended part way through
+ * @exceptsafe basic
+ */
+void meter_close(
+    CostMeter& meter,
+    double t,
+    bool full
+) {
+  if (!meter.open) return;
+  meter.leg.t_end_s = t;
+  meter.leg.full_window = full;
+  meter.done.push_back(meter.leg);
+  meter.open = false;
+}
+
+/**
+ * Follow the demand, opening and closing legs as it moves.
+ *
+ * Called once per control step with whatever the tour is asking for. A
+ * target index of -1 — the lead-in, and everything after the last target —
+ * closes whatever was open and starts nothing.
+ *
+ * @param[in,out] meter  the meter
+ * @param[in] index      the target being demanded, or -1 for none
+ * @param[in] t          simulated time, s
+ * @exceptsafe basic
+ */
+void meter_mark(
+    CostMeter& meter,
+    int index,
+    double t
+) {
+  if (meter.open && meter.leg.index == index) return;
+  meter_close(meter, t, true);
+  if (index >= 0) meter_open(meter, index, t);
+}
+
+/**
+ * Add one physics step to the open leg.
+ *
+ * The per-body differences are advanced whether or not a leg is open, so
+ * that the first step of a leg is differenced against the step before it
+ * rather than against nothing and the boundary costs no accuracy.
+ *
+ * @param[in,out] meter  the meter
+ * @param[in] h          resolved indices into the model and its state
+ * @param[in] dt         the physics timestep just taken, s
+ * @exceptsafe no-throw
+ */
+void meter_step(
+    CostMeter& meter,
+    const Handles& h,
+    double dt
+) {
+  const mjData* d = h.d;
+  const bool differences_valid = meter.warmup >= 2;
+  for (int i = 0; i < NUM_MOTOR; ++i) {
+    const double omega = d->qvel[h.dof_adr[i]];
+    const double alpha = (omega - meter.prev_qvel[i]) / dt;
+    if (differences_valid && meter.open) {
+      const int g = JOINT_GROUP[i];
+      meter.leg.group_vibration[g] += std::fabs(alpha - meter.prev_qacc[i]);
+      const double tau = d->actuator_force[h.act_id[i]];
+      meter.leg.group_energy_j[g] += std::fabs(tau * omega) * dt;
+    }
+    meter.prev_qvel[i] = omega;
+    meter.prev_qacc[i] = alpha;
+  }
+  if (meter.warmup < 2) ++meter.warmup;
+}
+
+/**
  * Draw a uniform double from [0, 1).
  *
  * Rolled by hand rather than taken from `std::uniform_real_distribution`,
@@ -1314,6 +1578,19 @@ void report_print(const Report& report) {
               << std::setw(6) << t.actual_yaw << ")  err " << std::setw(7)
               << std::setprecision(2) << t.pos_err_cm << " cm " << std::setw(6)
               << t.yaw_err_deg << " deg" << std::setprecision(3) << std::endl;
+  }
+  for (const SegmentCost& leg : report.segments) {
+    std::cout << "  leg    " << std::setw(2) << leg.index << "  "
+              << std::setprecision(2) << std::setw(6) << leg.t_start_s << "-"
+              << std::setw(6) << leg.t_end_s << " s";
+    for (int g = 0; g < NUM_GROUPS; ++g) {
+      std::cout << "  " << GROUP_NAMES[g] << " " << std::setprecision(1)
+                << std::setw(7) << leg.group_energy_j[g] << " J/"
+                << std::setw(7) << std::setprecision(0)
+                << leg.group_vibration[g];
+    }
+    std::cout << (leg.full_window ? "" : "  (cut short)")
+              << std::setprecision(3) << std::endl;
   }
   if (report.outcome == Outcome::COMPLETE) {
     std::cout << std::setprecision(2) << "walk pos " << report.pos_err_cm
@@ -1806,9 +2083,10 @@ double reach(
  *
  * One punch per target, on the target clock, so the disturbances arrive at
  * the same moments for every candidate and cannot be outrun by walking
- * faster. Force is drawn against a ceiling that ramps with time, which puts
- * the hardest hits at the end of a tour where a policy has already had to
- * prove it can walk at all.
+ * faster. Force is drawn against a ceiling that climbs with time from
+ * `RAMP_FLOOR` of `FORCE_MAX_N` at the first punch to all of it after
+ * `RAMP_S`, which puts the hardest hits at the end of a tour where a policy
+ * has already had to prove it can walk at all.
  *
  * Everything is drawn now rather than at the moment of impact: a policy
  * cannot change the campaign it faces by walking somewhere else.
@@ -1853,7 +2131,9 @@ Schedule schedule_make(
     }
     if (span <= 1e-9) p.draw_point[0] = r;
     direction(rng, p.dir);
-    const double ceiling = FORCE_MAX_N * std::min(p.time / RAMP_S, 1.0);
+    const double climbed = std::min((p.time - t_first) / RAMP_S, 1.0);
+    const double ceiling =
+        FORCE_MAX_N * (RAMP_FLOOR + (1.0 - RAMP_FLOOR) * climbed);
     p.force_n = ceiling * between(rng, FORCE_SCALE_MIN, 1.0);
     schedule.punches.push_back(p);
   }
@@ -2797,6 +3077,7 @@ Report sim_run(
   if (d == nullptr) throw std::runtime_error("sim: cannot allocate mjData");
   Handles h = handles_make(m, d);
   reset_to_stance(h);
+  CostMeter meter = meter_make();
 
   const std::shared_ptr<Loop> loop = loop_make(policy, tour);
   loop->quiet = config.quiet;
@@ -2882,6 +3163,7 @@ Report sim_run(
         }
       }
       place_markers(h, tour, tick, anchor, have_anchor);
+      meter_mark(meter, tick.target, d->time);
       if (tick.phase == Phase::DONE) {
         outcome = Outcome::COMPLETE;
         break;
@@ -2902,6 +3184,7 @@ Report sim_run(
     if (active_punch != nullptr) punch_apply(m, d, *active_punch);
 
     mj_step(m, d);
+    meter_step(meter, h, m->opt.timestep);
 
     if (released && d->qpos[h.base_qpos + 2] < FALL_PELVIS_Z) {
       outcome = Outcome::FELL;
@@ -2957,10 +3240,13 @@ Report sim_run(
   recorder_close(std::move(recorder));
   viewer_close(std::move(viewer));
 
+  meter_close(meter, d->time, false);
+
   Report report = loop_report(*loop);
   report.outcome = outcome;
   report.detail = detail;
   report.duration_s = d->time;
+  report.segments = std::move(meter.done);
 
   return report_finalize(report);
 }
@@ -3015,11 +3301,17 @@ void usage() {
          "  --seeds A-B       run each policy over seeds A..B inclusive\n"
          "  --parallel W      W tours in flight at once, one core each "
          "(default 1)\n"
-         "  --csv FILE        append one row per finished run, flushed as it "
-         "goes;\n"
-         "                    the header is written only to an empty file, "
-         "so a\n"
-         "                    campaign can be resumed onto the same file\n"
+         "  --csv FILE        record somewhere other than the default "
+      << DEFAULT_CSV
+      << ".\n"
+         "                    Every run appends, sweep or not: one 'run' row "
+         "plus\n"
+         "                    one 'seg' row per leg of its tour, carrying "
+         "per-joint\n"
+         "                    energy and vibration, flushed as it goes. The "
+         "header\n"
+         "                    is written only to an empty file, so a campaign\n"
+         "                    resumes onto the same file\n"
          "\n"
          "Everything else a run needs — the target clock, the arena, the "
          "punch forces,\n"
@@ -3241,11 +3533,6 @@ Args parse(
   }
   if (args.sweep.parallel > 1 && !args.sim.record_dir.empty()) {
     throw std::runtime_error("--parallel: cannot record a sweep with --record");
-  }
-  if (!args.sweep.csv.empty() && !args.sweep.enabled) {
-    throw std::runtime_error(
-        "--csv: there is nothing to write without --runs or --seeds"
-    );
   }
   return args;
 }
@@ -4129,34 +4416,87 @@ std::shared_ptr<ModelPolicy> make_policy(const char* name) {
  * starts empty, which makes resuming a campaign a matter of pointing
  * `--csv` at the same file again.
  *
- * The columns are what the published table is computed from and nothing
- * else. `outcome` gives the completion count and its interval;
- * `survival_s` the mean, median and worst; `pos_err_cm` and `yaw_err_deg`
- * the error columns, poolable across runs because `targets` travels beside
- * them as the weight. The step timings a run measures are deliberately
- * absent from the table, so they are absent from here too, and `seed` is
- * kept only so a campaign can be checked for gaps and resumed.
+ * Two kinds of row share the file, told apart by the `kind` column. A
+ * `run` row is what the published table is computed from and nothing else:
+ * `outcome` gives the completion count and its interval, `survival_s` the
+ * mean, median and worst, and `pos_err_cm` and `yaw_err_deg` the error
+ * columns, poolable across runs because `targets` travels beside them as
+ * the weight. The step timings a run measures are deliberately absent from
+ * the table, so they are absent from here too, and `seed` is kept only so a
+ * campaign can be checked for gaps and resumed. **Anything computing the
+ * table must filter on `kind == run` first.**
+ *
+ * A `seg` row is one leg of the tour — one target's clock — carrying the
+ * work each joint did and how much it shook while the robot walked it.
+ * Energy is written in joules and vibration in thousands of rad/s^2, both
+ * to one decimal place, which is all either is worth: a group's figures
+ * span four orders of magnitude across the field, and the raw jerk sums run
+ * to six digits before the decimal point means anything.
+ *
+ * There are as many as the run reached, and they join onto the `run`
+ * rows of the same policy and seed. A leg with `full_window` 0 was cut
+ * short by the fall or the timeout that ended the run and covers less than
+ * a target clock; pooling it with whole legs would understate both
+ * quantities, so it is flagged rather than dropped.
+ *
+ * The two kinds share one header, so each leaves the other's columns empty.
+ * A file that already exists must have been written by this same header or
+ * the append is refused: a campaign resumed after the scene or the metrics
+ * changed would otherwise interleave two schemas in one file and quietly
+ * ruin both halves.
  */
 class CsvLog {
  public:
+  /**
+   * Open a campaign file, writing or checking its header.
+   *
+   * @param[in] path  file to append to, created if absent
+   * @throws std::runtime_error if the file cannot be opened, or if it
+   *         already holds a header this build would not have written
+   * @exceptsafe basic
+   */
   explicit CsvLog(const std::string& path)
-      : out_(
-            path,
-            std::ios::app
-        ) {
+      : header_(header_for()),
+        blanks_(2 * NUM_GROUPS + 3) {
+    const std::filesystem::path parent =
+        std::filesystem::path(path).parent_path();
+    if (!parent.empty()) {
+      std::error_code ec;
+      std::filesystem::create_directories(parent, ec);
+      if (ec) {
+        throw std::runtime_error("csv: cannot create " + parent.string());
+      }
+    }
+    {
+      std::ifstream probe(path);
+      std::string first;
+      if (probe && std::getline(probe, first)) {
+        if (!first.empty() && first.back() == '\r') first.pop_back();
+        if (first != header_) {
+          throw std::runtime_error(
+              "csv: " + path +
+              " was written with different columns; point --csv at a new file"
+          );
+        }
+        existing_ = true;
+      }
+    }
+    out_.open(path, std::ios::app);
     if (!out_) throw std::runtime_error("csv: cannot open " + path);
-    if (out_.tellp() == std::streampos(0)) {
-      out_ << "policy,seed,outcome,survival_s,targets,pos_err_cm,yaw_err_deg\n";
+    if (!existing_) {
+      out_ << header_ << '\n';
       out_.flush();
     }
   }
 
   /**
-   * Record one finished run.
+   * Record one finished run: its summary row, then one row per leg.
    *
    * The error columns are written whatever the outcome, because the table
    * takes them over every target actually scored; a reader who wants only
-   * completed tours has the outcome column to filter on.
+   * completed tours has the outcome column to filter on. All of a run's
+   * rows are appended under one lock so that a sweep with sixteen tours in
+   * flight cannot interleave them.
    *
    * @param[in] seed    the seed this run walked
    * @param[in] report  the finished run
@@ -4167,18 +4507,58 @@ class CsvLog {
       const Report& report
   ) {
     std::ostringstream line;
-    line << report.policy << ',' << seed << ',' << outcome_name(report.outcome)
-         << ',' << std::fixed << std::setprecision(3) << report.duration_s
-         << ',' << report.targets.size() << ',' << std::setprecision(4)
-         << report.pos_err_cm << ',' << report.yaw_err_deg << '\n';
+    line << std::fixed;
+    line << "run," << report.policy << ',' << seed << ",,"
+         << outcome_name(report.outcome) << ',' << std::setprecision(1)
+         << report.duration_s << ',' << report.targets.size() << ','
+         << report.pos_err_cm << ',' << report.yaw_err_deg
+         << std::string(blanks_, ',') << '\n';
+
+    for (const SegmentCost& leg : report.segments) {
+      line << "seg," << report.policy << ',' << seed << ',' << leg.index
+           << ",,,,,,";
+      line << std::setprecision(1);
+      if (leg.full_window) {
+        line << ',';
+      } else {
+        line << leg.t_start_s << ',' << leg.t_end_s;
+      }
+      line << ',' << (leg.full_window ? 1 : 0);
+      for (const double e : leg.group_energy_j) line << ',' << e;
+      for (const double v : leg.group_vibration) line << ',' << v / 1000.0;
+      line << '\n';
+    }
+
     const std::lock_guard<std::mutex> lock(mutex_);
     out_ << line.str();
     out_.flush();
   }
 
  private:
-  std::mutex mutex_;   ///< serialises the appends
-  std::ofstream out_;  ///< the file, opened for append
+  /**
+   * Build the one header both kinds of row are written against.
+   *
+   * @returns the header line, without its newline
+   * @exceptsafe basic
+   */
+  static std::string header_for() {
+    std::string header =
+        "kind,policy,seed,segment,outcome,survival_s,targets,pos_err_cm,"
+        "yaw_err_deg,t_start_s,t_end_s,full_window";
+    for (const char* group : GROUP_NAMES) {
+      header += ",e_" + std::string(group) + "_j";
+    }
+    for (const char* group : GROUP_NAMES) {
+      header += ",v_" + std::string(group) + "_krads2";
+    }
+    return header;
+  }
+
+  std::mutex mutex_;       ///< serialises the appends
+  std::ofstream out_;      ///< the file, opened for append
+  std::string header_;     ///< what this build writes and demands
+  size_t blanks_;          ///< per-leg columns a `run` row leaves empty
+  bool existing_ = false;  ///< true if the file already had a header
 };
 
 /**
@@ -4214,7 +4594,9 @@ int sweep_run(const Args& args) {
       scene_load(args.sim.model_path);
 
   std::unique_ptr<CsvLog> csv;
-  if (!args.sweep.csv.empty()) csv = std::make_unique<CsvLog>(args.sweep.csv);
+  if (!args.sweep.csv.empty()) {
+    csv = std::make_unique<CsvLog>(args.sweep.csv);
+  }
 
   const size_t seeds =
       static_cast<size_t>(args.sweep.last - args.sweep.first) + 1;
@@ -4343,6 +4725,11 @@ int run(
       std::cout << "ERROR: " << e.what() << std::endl;
     }
     if (!report.targets.empty()) report_print(report);
+
+    if (!args.sweep.csv.empty()) {
+      CsvLog(args.sweep.csv).row(args.scenario.seed, report);
+      std::cout << "recorded to " << args.sweep.csv << std::endl;
+    }
 
     std::cout << std::endl
               << std::left << std::setw(15) << "policy" << std::right
