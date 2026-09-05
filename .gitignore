@@ -1,3 +1,4 @@
+.claude
 build/
 videos/
 __pycache__/
@@ -6,3 +7,12 @@ policies/robomimic/model.pt
 policies/robomimic/model.onnx
 policies/run_residual/model_cmg.onnx
 policies/run_residual/model_residual.onnx
+
+# PyTorch checkpoints and other pickle-backed weights. The benchmark loads
+# ONNX; these are the export inputs that download_weights.sh refetches.
+*.pt
+*.pth
+*.ckpt
+*.pkl
+*.safetensors
+*.bin
