@@ -26,10 +26,18 @@ SRCS := main.cpp
 POLICIES := $(wildcard policies/*/*.cpp)
 OBJS := $(patsubst %.cpp,$(BUILD)/%.o,$(SRCS))
 
-.PHONY: all clean info
+.PHONY: all clean info table
 .DEFAULT_GOAL := all
 
 all: $(BIN)
+
+TABLE := $(BUILD)/table
+
+table: $(TABLE)
+
+$(TABLE): table.cpp | $(BUILD)
+	@echo "CXX $<"
+	@$(CXX) -std=c++20 -O2 -DNDEBUG -Wall -Wextra $< -o $@
 
 info:
 	@echo "mujoco:   $(MUJOCO)"

@@ -269,6 +269,14 @@ row per run, with `clobot_with_arms` in that file too — ten thousand rows that
 no line of the table above draws on. Every run also carries what each waypoint of its
 tour cost, joint group by joint group, in the `s<i>_` columns described above.
 
+The table itself is computed by [table.cpp](table.cpp), which links nothing and
+reads only that file. `make table && ./build/table` reprints it, so the numbers
+above can be checked against the runs rather than trusted:
+
+```sh
+make table && ./build/table | diff - <(sed -n '/^| `--policy`/,/^$/p' README.md)
+```
+
 ### What the tour costs
 
 The last four columns come from the per-waypoint `s<i>_` columns, summed across
