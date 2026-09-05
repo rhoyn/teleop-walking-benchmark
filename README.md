@@ -153,7 +153,13 @@ over from a stance it was not necessarily trained around.
 | `rl_gym` | **114/10000** | 1-1% | 23.9 s | 22.1 s | 0.6 s | 57.89 cm | 6.22° |
 | `openwbt` | **104/10000** | 1-1% | 26.1 s | 26.1 s | 0.8 s | 10.37 cm | 35.88° |
 | `clobot` | **0/10000** | 0-0% | 2.2 s | 2.2 s | 0.7 s | - | - |
-| ~~`clobot_with_arms`~~ | ~~**855/10000**~~ | ~~8-9%~~ | ~~33.1 s~~ | ~~31.1 s~~ | ~~0.8 s~~ | ~~33.81 cm~~ | ~~5.01°~~ |
+| ~~`clobot_with_arms`~~\*\* | ~~**855/10000**~~ | ~~8-9%~~ | ~~33.1 s~~ | ~~31.1 s~~ | ~~0.8 s~~ | ~~33.81 cm~~ | ~~5.01°~~ |
+
+\*\* Struck through because it does not rank. `clobot_with_arms` is the same
+checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
+row drives — a harness configuration rather than a fourteenth policy. It sits
+under `clobot` so the two can be read against each other, and not against the
+rows above them.
 
 **The bottom four complete under 3% of their tours** — `falcon`, `rl_gym`,
 `openwbt` and `clobot`, which finishes none — so read their error columns with
@@ -215,12 +221,8 @@ the arm swing, not the arm pose.
 
 In fairness to the checkpoint, the same weights are also wired up as
 `--policy clobot_with_arms`, owning all 29 joints, and run over the same seeds
-0-9999. It is struck through in the table because it does not rank: the table is
-thirteen policies driving the lower body under one rule, and `clobot_with_arms`
-is a harness configuration rather than a fourteenth checkpoint. Read its row
-beside `clobot`'s rather than against the ones above it — giving the policy its
-arms back is worth 855 tours against none, which would place it above `rl_lab`
-rather than at the bottom of the field.
+0-9999. Giving the policy its arms back is worth 855 tours against none, which
+would place it above `rl_lab` rather than at the bottom of the field.
 
 **Low error does not mean good.** `run_residual` cannot strafe, reverse or turn
 in place — its command floor forces it forward at 0.5 m/s whenever it is off
