@@ -27,3 +27,16 @@ policies/wcompton/model.onnx
 policies/bfm_zero/model.onnx
 
 # latents.bin is a CC BY-NC derivative too; *.bin above already holds it out
+
+# No upstream licence, so this repository has no right to redistribute them.
+# NOTICE records the terms; download_weights.sh fetches them from upstream.
+policies/dm_agile/model.onnx
+policies/dm_march/model.onnx
+policies/handoff/model.onnx
+policies/legged_rl_lab/model.onnx
+
+# Also unlicensed upstream, and with no automated path back: the ONNX these
+# policies load was converted locally from an upstream .pt that export_onnx.py
+# does not handle. Fetching them needs that conversion written first.
+policies/g1_gym/model.onnx
+policies/stepdown/model.onnx

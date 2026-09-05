@@ -10,29 +10,29 @@ recorded here.
 1. POLICY CHECKPOINTS
 -------------------------------------------------------------------------------
 
-Sixteen checkpoints across thirteen policies. Twelve are committed beside the
-policy that loads them. Four are not, because their upstreams grant no licence
-to redistribute them: ./download_weights.sh pulls those from the upstream
-repository, so you take them under the upstream's terms rather than under this
-repository's.
+Twenty-nine policies, and every checkpoint they load is third-party. Nineteen
+weight files are committed beside the policy that loads them; ./download_weights.sh
+pulls fourteen from their upstream repositories, so you take those under the
+upstream's terms rather than under this repository's; ./export_onnx.py converts
+one on your machine. Five cannot be obtained automatically at all and are marked
+"no automated path" below -- running those five policies means producing the file
+yourself.
 
-Four further rows are ONNX conversions, written by ./export_onnx.py from the
-TorchScript checkpoints above them so that every policy can run on TensorRT.
-A conversion is a derivative of its source and carries the source's terms
-unchanged -- putting a weight in another container grants no right that did not
-already exist. So each conversion ships only where its source's terms allow it
-to: amo's and rl_gym's are committed because their checkpoints are
-redistributable, and robomimic's is generated on your machine because its
-checkpoint declares no licence at all. The amo and rl_gym checkpoints
-themselves are fetched rather than committed -- that is a repository-size
-choice about PyTorch blobs, not a licence one, and it does not affect their
-conversions. Running robomimic therefore needs ./export_onnx.py after
-./download_weights.sh; the other twelve policies need neither.
+Some rows are ONNX conversions, written by ./export_onnx.py from the TorchScript
+checkpoints above them so that a policy can run on TensorRT. A conversion is a
+derivative of its source and carries the source's terms unchanged -- putting a
+weight in another container grants no right that did not already exist. So each
+conversion ships only where its source's terms allow it to: amo's and rl_gym's
+are committed because their checkpoints are redistributable, and robomimic's is
+generated on your machine because its checkpoint declares no licence at all.
+The amo and rl_gym checkpoints themselves are fetched rather than committed --
+that is a repository-size choice about PyTorch blobs, not a licence one, and it
+does not affect their conversions.
 
 The sha256 column is the first four hex of the file's sha256 -- an identifier
 for this table, not an integrity check. `sha256sum policies/*/model*` gives the
-real thing. The nine committed files verify against this record as committed,
-and ./download_weights.sh carries the full sha256 of the other seven and
+real thing. The committed files verify against this record as committed, and
+./download_weights.sh carries the full sha256 of every file it fetches and
 refuses a download that does not match it.
 
   amo  policies/amo/model.pt  6d86  Apache-2.0, sim only  ./download_weights.sh
@@ -100,21 +100,102 @@ refuses a download that does not match it.
   run_residual  policies/run_residual/model_residual.onnx  5124  NONE DECLARED  ./download_weights.sh
     PMY9527/RUN_DEPLOY, .../residual/exported/point25.onnx
 
-Three flags worth reading twice:
+  bfm_zero  policies/bfm_zero/model.onnx  2090  CC BY-NC 4.0, NON-COMMERCIAL  ./download_weights.sh
+  bfm_zero  policies/bfm_zero/latents.bin  5a7c  CC BY-NC 4.0, NON-COMMERCIAL  not shipped, no automated path
+    LeCAR-Lab/BFM-Zero, model/exported/FBcprAuxModel.onnx
+    latents.bin is derived from model/reward_inference/reward_locomotion.pkl
+    https://github.com/LeCAR-Lab/BFM-Zero
 
-- homie is CC BY-NC. Research and non-commercial use only; a commercial build
-  must exclude it. It is fetched rather than committed, because an MIT
-  repository cannot sublicense a non-commercial network.
+  decoupled_wbc  policies/decoupled_wbc/model.onnx  6329  BSD-3-Clause  committed
+    chrisyrniu/IsaacLab-Decoupled-WBC
+    https://github.com/chrisyrniu/IsaacLab-Decoupled-WBC
 
-- robomimic and run_residual declare no licence at all, which makes them
-  effectively all-rights-reserved. That is why they are fetched rather than
-  committed: this repository will not hand you a copy it has no right to hand
-  you. The Apache-2.0 LICENSE circulating alongside the RoboMimic weights
-  belongs to AMO, a different project.
+  dm_agile  policies/dm_agile/model.onnx  94a9  NONE DECLARED  ./download_weights.sh
+    datamentorshf/dm-g1-agile-locomotion-rl, exported/policy.onnx
+    https://huggingface.co/datamentorshf/dm-g1-agile-locomotion-rl
+
+  dm_march  policies/dm_march/model.onnx  c82f  NONE DECLARED  ./download_weights.sh
+    datamentorshf/dm-g1-military-march-rl, exported/policy.onnx
+    https://huggingface.co/datamentorshf/dm-g1-military-march-rl
+
+  g1_gym  policies/g1_gym/model.onnx  e2c2  NONE DECLARED  not shipped, no automated path
+    IlikeSukiyaki/G1_GYM, converted locally from a checkpoint under
+    legged_gym/sim2mujoco/pre_train/ that export_onnx.py does not handle
+    https://github.com/IlikeSukiyaki/G1_GYM
+
+  grove  policies/grove/model.onnx  8995  BSD-3-Clause  committed
+    Adyansh04/grove-g1, unitree_g1_velocity_e2e.onnx
+    https://github.com/Adyansh04/grove-g1
+
+  handoff  policies/handoff/model.onnx  0c0f  NONE DECLARED  ./download_weights.sh
+    lzyang2000/HANDOFF, deploy/ckpt/policy.onnx
+    https://github.com/lzyang2000/HANDOFF
+
+  legged_rl_lab  policies/legged_rl_lab/model.onnx  2667  NONE DECLARED  ./download_weights.sh
+    zihanwang0422/legged_rl_lab, deploy/g1_deploy/exported_policy/g1_flat_1.onnx
+    https://github.com/zihanwang0422/legged_rl_lab
+
+  nanog1  policies/nanog1/model.onnx  828d  MIT  committed
+    kingJulio/nanoG1 for the weights, kingjulio8238/nanoG1 for the code
+    https://huggingface.co/kingJulio/nanoG1
+
+  schoi  policies/schoi/model.onnx  cc10  Apache-2.0  committed
+    S-CHOI-S/Unitree-G1-Sim2Real, policy/basic_walk/policy.onnx
+    https://github.com/S-CHOI-S/Unitree-G1-Sim2Real
+
+  sonic  policies/sonic/model_encoder.onnx  013a  NVIDIA Open Model  ./download_weights.sh
+  sonic  policies/sonic/model_decoder.onnx  c724  NVIDIA Open Model  ./download_weights.sh
+  sonic  policies/sonic/planner_sonic_f32.onnx  a8a5  NVIDIA Open Model  not shipped, no automated path
+    BlackCatRoboticsAI/g1-sonic-base; the planner is a local float32 conversion
+    of the upstream planner_sonic.onnx, which no script here reproduces
+    https://huggingface.co/BlackCatRoboticsAI/g1-sonic-base
+
+  stepdown  policies/stepdown/model.onnx  2030  NONE DECLARED  not shipped, no automated path
+    arushbisht12/unitree-g1-stepdown-safety, converted locally from motion.pt
+    https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety
+
+  wbc_agile  policies/wbc_agile/model.onnx  f9a8  Apache-2.0  committed
+    nvidia-isaac/WBC-AGILE; the repository is dual-licensed, but the BSD-3-Clause
+    half covers only third_party/rsl_rl/patches/ and not this checkpoint
+    https://github.com/nvidia-isaac/WBC-AGILE
+
+  wcompton  policies/wcompton/model.onnx  134a  NONE DECLARED  not shipped, upstream gone
+    wcompton/legged_locomotion_rl -- the repository now returns HTTP 404, so
+    this checkpoint cannot be fetched from anywhere
+
+  wty_cpp  policies/wty_cpp/model.onnx  f544  MIT  committed
+    wty-yy/unitree_cpp_deploy
+    https://github.com/wty-yy/unitree_cpp_deploy
+
+  zealot  policies/zealot/model.onnx  fd17  Apache-2.0  committed
+    haixuantao/zealot-g1-locomotion, the velocity-v28 run
+    https://huggingface.co/haixuantao/zealot-g1-locomotion
+
+Four flags worth reading twice:
+
+- Nine policies load a checkpoint that declares no licence at all, which makes
+  it effectively all-rights-reserved: dm_agile, dm_march, g1_gym, handoff, legged_rl_lab,
+  robomimic, run_residual, stepdown and wcompton. That is why none of them is
+  committed here -- this repository will not hand you a copy it has no right to
+  hand you. The Apache-2.0 LICENSE circulating alongside the RoboMimic weights
+  belongs to AMO, a different project. wcompton is worse than the rest: its
+  upstream repository has been deleted, so the file cannot be fetched at all.
+
+- homie and bfm_zero are CC BY-NC. Research and non-commercial use only; a
+  commercial build must exclude both. They are fetched rather than committed,
+  because an MIT repository cannot sublicense a non-commercial network. The
+  same reasoning holds for bfm_zero's latents.bin, an 8 KB table derived from a
+  CC BY-NC pickle, which is why that policy does not run from a clean clone.
 
 - amo is Apache-2.0 but sim-only by its authors' explicit request. The upstream
   README warns against third-party hardware deployment, citing a sim-to-real
   failure that damaged a robot.
+
+- sonic's model card contradicts itself: the prose and the summary table say
+  "NVIDIA Open Model License (commercial use permitted with attribution)", while
+  the link beside them points at NVIDIA's OneWay *Noncommercial* licence PDF.
+  Recorded here as the card names it. If commercial use matters to you, settle
+  it with the authors rather than with this file.
 
 gr00t_wbc, the candidate that wins the campaign, is NVIDIA Open Model. If
 licence terms decide your build, openwbt (Apache-2.0) is the most permissive

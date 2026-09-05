@@ -34,6 +34,30 @@ WEIGHTS=(
   "policies/bfm_zero/model.onnx"
   "209097902c45621eebab2edb81070c31895fcdd558f0cf6f7f5a360fd747ab74"
   "https://huggingface.co/LeCAR-Lab/BFM-Zero/resolve/62b4206d68e026de5e5dc7efb1529bccfb95164c/model/exported/FBcprAuxModel.onnx"
+
+  "policies/dm_agile/model.onnx"
+  "94a95b934e34b4c2682127cd66eacbadaa634db8a27d67b47ad15ff3a814dad9"
+  "https://huggingface.co/datamentorshf/dm-g1-agile-locomotion-rl/resolve/4a32a3d8d1979880e2fa6a37760e6cf0017f400f/exported/policy.onnx"
+
+  "policies/dm_march/model.onnx"
+  "c82f23413644ed317b11ce92bf1390e8f35370b8a9c56d6fa6255ef3086567bf"
+  "https://huggingface.co/datamentorshf/dm-g1-military-march-rl/resolve/86f48548ec595aa2b277390432619fd7c2c2c841/exported/policy.onnx"
+
+  "policies/handoff/model.onnx"
+  "0c0f7975a50234a2d20935bfec6fbc7aa88b6401d8654bb4feb3aff7d2329333"
+  "https://raw.githubusercontent.com/lzyang2000/HANDOFF/6454ae8811f31ed722e561cb0ca7c1e432ac7ca8/deploy/ckpt/policy.onnx"
+
+  "policies/legged_rl_lab/model.onnx"
+  "26679e18977a3c5d26b4e653aaa46ef4f30fe862e7df719a2d5b77f1ebfab746"
+  "https://raw.githubusercontent.com/zihanwang0422/legged_rl_lab/386ee24bc62c8033641d65b940dc2cf1dec56545/deploy/g1_deploy/exported_policy/g1_flat_1.onnx"
+
+  "policies/sonic/model_decoder.onnx"
+  "c7241a123eaa36b5d64bad19540efde93cac1ad443bd4572fd12ca99898118ed"
+  "https://huggingface.co/BlackCatRoboticsAI/g1-sonic-base/resolve/5ff852359854df09caab7c3733440322234a2def/model_decoder.onnx"
+
+  "policies/sonic/model_encoder.onnx"
+  "013ab0287236aa2721e13f1e936d699db982302d0de0bfcdae76d5c3245362d3"
+  "https://huggingface.co/BlackCatRoboticsAI/g1-sonic-base/resolve/5ff852359854df09caab7c3733440322234a2def/model_encoder.onnx"
 )
 
 for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do

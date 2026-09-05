@@ -3,10 +3,11 @@
 Blog post: [Stable walk](https://rhoyn.com/stable-walk?utm_source=github)
 
 Twenty-nine open-source Unitree G1 walking policies ported to one C++ interface
-and scored against the same waypoint tour in MuJoCo. Twenty-nine of the
-thirty-four checkpoints are committed under `policies/`; `./download_weights.sh`
-pulls four more and `./export_onnx.py` converts the last from a fetched
-checkpoint.
+and scored against the same waypoint tour in MuJoCo. Nineteen of their
+weight files are committed under `policies/`; `./download_weights.sh` fetches
+fourteen whose licences do not permit redistribution here, `./export_onnx.py`
+converts one, and five have no automated path at all — see
+[Policy weights](#policy-weights).
 
 The difficulty is deliberate. A benchmark every candidate completes ranks
 nothing — it separates no one, it only shows the task was too easy. This one is
@@ -406,35 +407,34 @@ calls against 3,000 policy steps, and inference is under 3% of a run.
 
 ## Policy weights
 
-Thirty-four checkpoints across the twenty-nine policies. Twenty-nine are
-committed beside the policy that loads them; `./download_weights.sh` pulls eight
-files from their upstream repositories and checks each file's sha256 as it
-lands.
+Every checkpoint is third-party. Nineteen weight files are committed beside the
+policy that loads them; `./download_weights.sh` pulls fourteen more from their
+upstream repositories and checks each file's sha256 as it lands; `./export_onnx.py`
+converts one on your machine.
 
-A checkpoint's licence travels to anything derived from it, so the ONNX that
-`./export_onnx.py` writes is shipped only where its source's terms allow.
-`amo`'s and `rl_gym`'s conversions are committed because those checkpoints are
-redistributable; the checkpoints themselves are fetched rather than committed,
-which is a repository-size choice about PyTorch blobs and not a licence one.
-`robomimic`'s checkpoint declares no licence at all, so its conversion is
-generated on your machine rather than committed. Converting a file to another
-format does not make it redistributable.
+A checkpoint's licence travels to anything derived from it, so a conversion
+ships only where its source's terms allow it. `amo`'s and `rl_gym`'s conversions
+are committed because those checkpoints are redistributable; the checkpoints
+themselves are fetched rather than committed, which is a repository-size choice
+about PyTorch blobs and not a licence one. `robomimic`'s checkpoint declares no
+licence at all, so its conversion is generated on your machine rather than
+committed. Converting a file to another format does not make it redistributable.
 
-Three rows in the table cannot be reproduced from a clean clone, and they are
-named here rather than left to fail at run time. `sonic` ships 825 MB of
-weights, over GitHub's per-file limit, and `wcompton` declares no licence
-upstream; neither is committed and neither has a `./download_weights.sh` entry
-yet. `bfm_zero`'s checkpoint is fetched, but the 8 KB latent table it also
-loads is a CC BY-NC derivative and is not committed. Their figures are real
-measurements taken on this machine; obtaining the weights is on you until those
-three are resolved.
+**Five policies do not run from a clean clone**, and they are named here rather
+than left to fail at run time. `g1_gym` and `stepdown` load an ONNX converted
+locally from an upstream `.pt` that `export_onnx.py` does not handle, and both
+upstreams are unlicensed. `sonic`'s planner is a local float32 conversion of the
+upstream file, which no script here reproduces. `bfm_zero` needs an 8 KB latent
+table derived from a CC BY-NC pickle. `wcompton`'s upstream repository has been
+deleted outright and returns HTTP 404, so its checkpoint cannot be fetched from
+anywhere. Their figures in the table are real measurements taken on this
+machine; obtaining the weights is on you.
 
 Every checkpoint is third-party, as are the Unitree G1 description under
-`assets/` and the bundled font. [NOTICE](NOTICE) records provenance and terms
-for the original thirteen policies. **It has not yet been extended to the
-sixteen added since**, so for those the licence position is undetermined rather
-than cleared — do not read silence there as permission. Settling that is the
-next piece of work on this repository.
+`assets/` and the bundled font. Their provenance and terms — which two are
+non-commercial, which nine declare nothing at all, which is sim-only, and which
+one's upstream has vanished — are recorded in [NOTICE](NOTICE), now covering
+all twenty-nine policies. Read it before you build on a result.
 
 ## Adding a policy
 
