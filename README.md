@@ -158,7 +158,7 @@ Every policy is handed the same stance. The crane ramps the robot to the shared
 each checkpoint chose for itself, so what is measured is how well a policy takes
 over from a stance it was not necessarily trained around.
 
-| `--policy` | completed | survived | pos err | yaw err | first waypoint battery energy consumed | tour battery energy consumed | first waypoint vibrations | tour vibrations |
+| `--policy` | completed | survived | pos err | yaw err | first waypoint<br>battery energy<br>consumed | tour<br>battery energy<br>consumed | first waypoint<br>vibrations | tour<br>vibrations |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | `gr00t_wbc` | **78.9%** | 56.7 s | 9.5 cm | 2.9° | 279.1 J | 4947.5 J | 449.9 | 6879.2 |
 | `homie` | **71.0%** | 55.6 s | 17.9 cm | 34.5° | 379.9 J | 6530.0 J | 591.1 | 8654.3 |
