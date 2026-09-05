@@ -454,12 +454,12 @@ int main(
       throw std::runtime_error("table: " + path + " holds no runs");
     }
 
-    std::cout
-        << "| `--policy` | completed | survived | pos err | yaw err | first "
-           "waypoint<br>battery energy<br>consumed | tour<br>battery "
-           "energy<br>consumed | first waypoint<br>vibrations | "
-           "tour<br>vibrations |\n"
-        << "|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n";
+    std::cout << "| `--policy` | completed | survived | pos err | yaw err "
+                 "| first<br>waypoint<br>battery<br>energy<br>consumed "
+                 "| tour<br>battery<br>energy<br>consumed "
+                 "| first<br>waypoint<br>vibrations "
+                 "| tour<br>vibrations |\n"
+              << "|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }
