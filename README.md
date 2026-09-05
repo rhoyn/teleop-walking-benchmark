@@ -157,22 +157,22 @@ Every policy is handed the same stance. The crane ramps the robot to the shared
 each checkpoint chose for itself, so what is measured is how well a policy takes
 over from a stance it was not necessarily trained around.
 
-| `--policy` | completed | 95% CI | survived | median | worst | pos err | yaw err |
-|---|---|---|---|---|---|---|---|
-| `gr00t_wbc` | **7894/10000** | 78-80% | 56.7 s | 60.0 s | 5.8 s | 9.54 cm | 2.91° |
-| `homie` | **7104/10000** | 70-72% | 55.6 s | 60.0 s | 5.8 s | 17.94 cm | 34.46° |
-| `amo` | **6987/10000** | 69-71% | 54.5 s | 60.0 s | 0.8 s | 23.03 cm | 12.08° |
-| `robomimic` | **6515/10000** | 64-66% | 54.9 s | 60.0 s | 0.9 s | 11.10 cm | 3.60° |
-| `asap` | **5353/10000** | 53-55% | 52.5 s | 60.0 s | 0.8 s | 13.16 cm | 9.95° |
-| `rl_mjlab` | **4592/10000** | 45-47% | 51.0 s | 56.3 s | 0.8 s | 14.74 cm | 3.42° |
-| `holosoma` | **4169/10000** | 41-43% | 50.1 s | 55.7 s | 5.6 s | 18.07 cm | 3.14° |
-| `run_residual` | **1435/10000** | 14-15% | 39.2 s | 40.9 s | 1.0 s | 432.32 cm | 3.24° |
-| `rl_lab` | **731/10000** | 7-8% | 36.3 s | 36.3 s | 0.7 s | 13.75 cm | 65.47° |
-| `falcon` | **226/10000** | 2-3% | 28.3 s | 26.6 s | 1.2 s | 33.64 cm | 4.07° |
-| `rl_gym` | **114/10000** | 1-1% | 23.9 s | 22.1 s | 0.6 s | 57.89 cm | 6.22° |
-| `openwbt` | **104/10000** | 1-1% | 26.1 s | 26.1 s | 0.8 s | 10.37 cm | 35.88° |
-| `clobot` | **0/10000** | 0-0% | 2.2 s | 2.2 s | 0.7 s | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**855/10000**~~ | ~~8-9%~~ | ~~33.1 s~~ | ~~31.1 s~~ | ~~0.8 s~~ | ~~33.81 cm~~ | ~~5.01°~~ |
+| `--policy` | completed | survived | pos err | yaw err |
+|---|---|---|---|---|
+| `gr00t_wbc` | **7894/10000** | 56.7 s | 9.54 cm | 2.91° |
+| `homie` | **7104/10000** | 55.6 s | 17.94 cm | 34.46° |
+| `amo` | **6987/10000** | 54.5 s | 23.03 cm | 12.08° |
+| `robomimic` | **6515/10000** | 54.9 s | 11.10 cm | 3.60° |
+| `asap` | **5353/10000** | 52.5 s | 13.16 cm | 9.95° |
+| `rl_mjlab` | **4592/10000** | 51.0 s | 14.74 cm | 3.42° |
+| `holosoma` | **4169/10000** | 50.1 s | 18.07 cm | 3.14° |
+| `run_residual` | **1435/10000** | 39.2 s | 432.32 cm | 3.24° |
+| `rl_lab` | **731/10000** | 36.3 s | 13.75 cm | 65.47° |
+| `falcon` | **226/10000** | 28.3 s | 33.64 cm | 4.07° |
+| `rl_gym` | **114/10000** | 23.9 s | 57.89 cm | 6.22° |
+| `openwbt` | **104/10000** | 26.1 s | 10.37 cm | 35.88° |
+| `clobot` | **0/10000** | 2.2 s | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**855/10000**~~ | ~~33.1 s~~ | ~~33.81 cm~~ | ~~5.01°~~ |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -205,15 +205,16 @@ position error and lowest yaw error — the first time one policy has taken all
 four. It held the first three on the old tour but lost position error to
 `openwbt`; at ten thousand seeds it takes that too, 9.54 cm against 10.37 cm,
 and this time on a row that finishes four fifths of its tours rather than none.
-Its interval clears second place by seven points, 78-80% against `homie`'s
-70-72%. First place is not close.
+It clears second place by eight points of completion, 78.9% against `homie`'s
+71.0%. First place is not close.
 
-**Ten thousand seeds leave almost nothing tied.** Every interval in the table is
-two points wide or less, and only `homie` and `amo` overlap at all — 70-72%
-against 69-71%, a single point of contact after seven thousand completions
-apiece. `robomimic` is clearly fourth, `asap` clearly fifth. The sample size is
-past the point of being the limiting factor: what separates these policies now
-is the tour, not the statistics.
+**Ten thousand seeds leave almost nothing tied.** No 95% Wilson interval in the
+completion column is wider than two points, so every gap in it is real except
+one: `homie` and `amo` finish 7104 and 6987 tours, 70.1-71.9% against
+69.0-70.8%, close enough that their intervals still touch. Everything else separates cleanly — `robomimic` is
+fourth, `asap` fifth, and the order below them holds. The sample size is past
+the point of being the limiting factor: what separates these policies now is the
+tour, not the statistics.
 
 **`openwbt` is accurate and still cannot finish**: second-best mean position
 error in the field and 104 completions in ten thousand tries. Its 35.88° yaw
@@ -221,7 +222,7 @@ error is where it goes — capped at its published 0.3 m/s, it cannot hold headi
 on the harder draws.
 
 **`clobot` fails on every seed, but no longer identically.** Not one scored
-target in ten thousand tours, and a mean, median and worst of 2.2 s, 2.2 s and
+target in ten thousand tours, and a mean survival of 2.2 s against a worst of
 0.7 s. On the old tour every run was the same 5.3 s to three significant
 figures; now the first punch lands a tenth of a second after the release and
 spreads the falls across 27 distinct times between 0.7 s and 3.3 s. The
