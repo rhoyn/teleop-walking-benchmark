@@ -122,13 +122,14 @@ The clip carries the policy name on the floor and nothing else; a punch draws a
 red arrow at the contact point, sized by the force and held for 500 ms after the
 hit.
 
-## The 500-seed campaign
+## The 10,000-seed campaign
 
-Seeds 0-499, all thirteen policies per seed: **6500 runs**, 160 robot-hours of
-simulated walking, sixteen tours in flight on an RTX 4090 / Ryzen 7 7800X3D.
-No run errored, and no run was interrupted.
+Seeds 0-9999, every policy over every seed: **140,000 runs**, 1568 robot-hours
+of simulated walking, fifteen tours in flight on an RTX 4090 / Ryzen 7 7800X3D.
+No run errored and no run was interrupted, so every row in `results/result.csv`
+is a measurement.
 
-Each seed draws its own 24-target tour and its own punch campaign, so a seed is
+Each seed draws its own 12-target tour and its own punch campaign, so a seed is
 a whole task, not a repetition — the runs are deterministic and a repeated seed
 reproduces bit-identically.
 
@@ -139,24 +140,24 @@ over from a stance it was not necessarily trained around.
 
 | `--policy` | completed | 95% CI | survived | median | worst | pos err | yaw err |
 |---|---|---|---|---|---|---|---|
-| `gr00t_wbc` | **374/500** | 71-78% | 120.0 s | 125.0 s | 60.7 s | 9.10 cm | 2.92° |
-| `amo` | **330/500** | 62-70% | 118.1 s | 125.0 s | 60.8 s | 19.58 cm | 13.03° |
-| `homie` | **292/500** | 54-63% | 116.3 s | 125.0 s | 65.8 s | 18.05 cm | 34.70° |
-| `robomimic` | **242/500** | 44-53% | 113.7 s | 121.0 s | 46.0 s | 10.20 cm | 3.58° |
-| `asap` | **175/500** | 31-39% | 109.2 s | 115.7 s | 46.0 s | 12.89 cm | 9.26° |
-| `rl_mjlab` | **140/500** | 24-32% | 105.8 s | 110.6 s | 51.8 s | 13.17 cm | 3.31° |
-| `holosoma` | **119/500** | 20-28% | 106.6 s | 110.6 s | 36.0 s | 15.13 cm | 3.13° |
-| `run_residual` | **22/500** | 3-7% | 85.5 s | 86.2 s | 21.0 s | 516.15 cm | 3.28° |
-| `rl_lab` | **13/500** | 2-4% | 86.5 s | 86.1 s | 24.1 s | 12.25 cm | 67.05° |
-| `falcon` | **1/500** | 0-1% | 66.6 s | 66.0 s | 18.9 s | 29.63 cm | 3.25° |
-| `openwbt` | **0/500** | 0-1% | 67.1 s | 66.2 s | 31.0 s | 8.80 cm | 34.39° |
-| `rl_gym` | **0/500** | 0-1% | 51.4 s | 53.4 s | 6.8 s | 53.04 cm | 5.99° |
-| `clobot` | **0/500** | 0-1% | 5.3 s | 5.3 s | 5.3 s | - | - |
+| `gr00t_wbc` | **7894/10000** | 78-80% | 56.7 s | 60.0 s | 5.8 s | 9.54 cm | 2.91° |
+| `homie` | **7104/10000** | 70-72% | 55.6 s | 60.0 s | 5.8 s | 17.94 cm | 34.46° |
+| `amo` | **6987/10000** | 69-71% | 54.5 s | 60.0 s | 0.8 s | 23.03 cm | 12.08° |
+| `robomimic` | **6515/10000** | 64-66% | 54.9 s | 60.0 s | 0.9 s | 11.10 cm | 3.60° |
+| `asap` | **5353/10000** | 53-55% | 52.5 s | 60.0 s | 0.8 s | 13.16 cm | 9.95° |
+| `rl_mjlab` | **4592/10000** | 45-47% | 51.0 s | 56.3 s | 0.8 s | 14.74 cm | 3.42° |
+| `holosoma` | **4169/10000** | 41-43% | 50.1 s | 55.7 s | 5.6 s | 18.07 cm | 3.14° |
+| `run_residual` | **1435/10000** | 14-15% | 39.2 s | 40.9 s | 1.0 s | 432.32 cm | 3.24° |
+| `rl_lab` | **731/10000** | 7-8% | 36.3 s | 36.3 s | 0.7 s | 13.75 cm | 65.47° |
+| `falcon` | **226/10000** | 2-3% | 28.3 s | 26.6 s | 1.2 s | 33.64 cm | 4.07° |
+| `rl_gym` | **114/10000** | 1-1% | 23.9 s | 22.1 s | 0.6 s | 57.89 cm | 6.22° |
+| `openwbt` | **104/10000** | 1-1% | 26.1 s | 26.1 s | 0.8 s | 10.37 cm | 35.88° |
+| `clobot` | **0/10000** | 0-0% | 2.2 s | 2.2 s | 0.7 s | - | - |
 
-**Four of these completed fewer than five tours** — `falcon` (1) and `openwbt`,
-`rl_gym` and `clobot` (none) — so read their error columns with care. Those
-figures rest on whichever fragments of a tour the policy reached before falling,
-which is not the same measurement as the rows above them.
+**The bottom four complete under 3% of their tours** — `falcon`, `rl_gym`,
+`openwbt` and `clobot`, which finishes none — so read their error columns with
+care. Those figures rest on whichever fragments of a tour the policy reached
+before falling, which is not the same measurement as the rows above them.
 
 Survival is sim seconds to the fall **measured from the crane's release**, not
 from the start of the simulation: the three seconds the crane spends ramping the
@@ -170,29 +171,35 @@ enough in that the policy has taken the new demand and started to act on it, so
 the punch disturbs the walking rather than the handover. Position and yaw errors are means over every target actually scored, so
 a policy that falls early is judged only on the targets it reached — that
 flatters the short-lived candidates rather than penalising them. Step timings
-are deliberately absent: the sweeps shared the machine sixteen at a time, which
+are deliberately absent: the sweeps shared the machine fifteen at a time, which
 inflates them by an order of magnitude. Measure those solo.
 
-**`gr00t_wbc` wins the criteria that matter** — fewest falls, longest survival,
-lowest yaw error — and at five hundred seeds its interval clears `amo`'s with
-nothing to spare, 70.8% against 70.0%. First place is not a sampling artefact,
-but it is no longer a wide margin either. It does not hold the lowest mean
-position error: `openwbt` edges it, 8.80 cm against 9.10 cm, on a row with zero
-completions.
+**`gr00t_wbc` now wins every column.** Fewest falls, longest survival, lowest
+position error and lowest yaw error — the first time one policy has taken all
+four. It held the first three on the old tour but lost position error to
+`openwbt`; at ten thousand seeds it takes that too, 9.54 cm against 10.37 cm,
+and this time on a row that finishes four fifths of its tours rather than none.
+Its interval clears second place by seven points, 78-80% against `homie`'s
+70-72%. First place is not close.
 
-**Five hundred seeds separate what a hundred could not.** `robomimic` sat inside
-`amo`'s and `homie`'s interval before and now sits clearly below both, fourth on
-its own. What remains genuinely tied is `amo` with `homie`, `asap` with
-`rl_mjlab` and `holosoma`, and the four rows at the bottom that never finish
-anything — no sample size separates policies that all score zero.
+**Ten thousand seeds leave almost nothing tied.** Every interval in the table is
+two points wide or less, and only `homie` and `amo` overlap at all — 70-72%
+against 69-71%, a single point of contact after seven thousand completions
+apiece. `robomimic` is clearly fourth, `asap` clearly fifth. The sample size is
+past the point of being the limiting factor: what separates these policies now
+is the tour, not the statistics.
 
-**`openwbt` is accurate and cannot finish**: the best mean position error in the
-field and zero completions in five hundred tries. Its 34.39° yaw error is where
-it goes — capped at its published 0.3 m/s, it cannot hold heading on the harder
-draws.
+**`openwbt` is accurate and still cannot finish**: second-best mean position
+error in the field and 104 completions in ten thousand tries. Its 35.88° yaw
+error is where it goes — capped at its published 0.3 m/s, it cannot hold heading
+on the harder draws.
 
-**`clobot` fails identically on every seed**: 5.3 s mean, median and worst, and
-not one scored target in five hundred tours. No run differed from any other.
+**`clobot` fails on every seed, but no longer identically.** Not one scored
+target in ten thousand tours, and a mean, median and worst of 2.2 s, 2.2 s and
+0.7 s. On the old tour every run was the same 5.3 s to three significant
+figures; now the first punch lands a tenth of a second after the release and
+spreads the falls across 27 distinct times between 0.7 s and 3.3 s. The
+punch changes when it goes over, not whether.
 
 That figure is the tour's rule rather than the gait. `clobot` is the only
 checkpoint here trained as a whole-body policy whose balance depends on its own
@@ -207,30 +214,35 @@ the arm swing, not the arm pose.
 
 In fairness to the checkpoint, the same weights are also wired up as
 `--policy clobot_with_arms`, owning all 29 joints, and run over the same seeds
-0-499: **6/500** complete, 1-3%, 73.8 s survived, 70.9 s median, 25.8 s worst,
-28.87 cm and 4.42°. That is deliberately not a row in the table above — the
-table is thirteen policies driving the lower body under one rule, and
+0-9999: **855/10000** complete, 8-9%, 33.1 s survived, 31.1 s median, 0.8 s
+worst, 33.81 cm and 5.01°. That is deliberately not a row in the table above —
+the table is thirteen policies driving the lower body under one rule, and
 `clobot_with_arms` is a harness configuration rather than a fourteenth
-checkpoint — but it does put the completion count between `rl_lab` and `falcon`
-rather than at the bottom.
+checkpoint — but it does put the completion count above `rl_lab` rather than at
+the bottom.
 
 **Low error does not mean good.** `run_residual` cannot strafe, reverse or turn
 in place — its command floor forces it forward at 0.5 m/s whenever it is off
-target, so it can only approach on an arc — and 516 cm is a policy that cannot
-do this task rather than a bad gait. `openwbt`'s first-place error is earned on
+target, so it can only approach on an arc — and 432 cm is a policy that cannot
+do this task rather than a bad gait. `openwbt`'s near-first error is earned on
 the fraction of each tour it survived. Read the completion column first.
 
-**Nothing completes reliably.** The best policy in the field fails a quarter of
-its tours, and the top four die around twenty seconds before the end of a 125 s
-tour on average, where the punch ramp approaches its 600 N ceiling. Surviving
-the end of the tour is the discriminator, not tracking error.
+**Nothing completes reliably.** The best policy in the field fails a fifth of
+its tours, and when the top four do fall they fall with about fifteen seconds
+left of a 60 s tour, where the punch ramp is closing on its 600 N ceiling.
+Surviving the end of the tour is the discriminator, not tracking error.
 
-The runs behind this table were in `results/result.csv`, one row per run, with
-`clobot_with_arms` in that file too — five hundred rows that no line of the
-table above drew on. That file has been removed: it was written under the
-previous 125 s tour and the previous punch ramp, and the columns have since
-changed shape as well, so nothing in it is comparable to what this harness now
-measures. **The table above is therefore stale and needs a fresh campaign.**
+**The opening punch is its own filter.** It lands a tenth of a second after the
+crane lets go, before any policy has taken a step, and it ends 4.2% of `rl_gym`'s
+runs and 2.8% of `openwbt`'s inside the first leg. The top four lose almost
+nothing there — two runs in ten thousand for `robomimic` and `asap` — so it
+separates the policies that cannot take a hit from a standing start rather than
+punishing the field at random.
+
+The runs behind this table are in [results/result.csv](results/result.csv), one
+row per run, with `clobot_with_arms` in that file too — ten thousand rows that
+no line of the table above draws on. Every run also carries what each leg of its
+tour cost, joint group by joint group, in the `s<i>_` columns described above.
 
 ## Inference
 
@@ -248,14 +260,14 @@ inputs and outputs and the policy carries it from step to step. It is the same
 recurrence, moved from the module into the caller.
 
 Converting them changes no weight, but it does change the arithmetic. Float32
-rounding of order 1e-6 per step, amplified across 125,000 physics steps of a
+rounding of order 1e-6 per step, amplified across 60,000 physics steps of a
 contact-rich tour, sends individual seeds down different trajectories — so a
 converted policy's result on a given seed is not comparable to its result
 before the conversion, even though its statistics over a campaign are.
 
 Each tour in a sweep pins itself to one core, so concurrent tours spread across
-the machine. Physics is the cost, not inference: a tour is 125,000 `mj_step`
-calls against 6,250 policy steps, and inference is under 3% of a run.
+the machine. Physics is the cost, not inference: a tour is 60,000 `mj_step`
+calls against 3,000 policy steps, and inference is under 3% of a run.
 
 ## Policy weights
 
