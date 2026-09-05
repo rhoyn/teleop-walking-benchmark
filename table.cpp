@@ -71,9 +71,9 @@ inline constexpr const char* UNRANKED = "clobot_with_arms";
  *
  * Kept as running sums rather than as stored rows because the campaign is
  * 140,000 lines and none of the figures in the table need a second pass.
- * The three counts are separate because the three averages are taken over
- * different populations: every run, every run that finished the opening
- * waypoint, and every run that finished the tour.
+ * The two counts are separate because the averages are taken over different
+ * populations: every run for survival and the errors, and only the runs
+ * that finished the tour for what a tour cost.
  */
 struct Totals {
   long runs = 0;          ///< every run of this policy
@@ -83,10 +83,6 @@ struct Totals {
   long targets = 0;  ///< targets scored, the weight the errors carry
   double pos = 0.0;  ///< sum of position error weighted by targets, cm
   double yaw = 0.0;  ///< sum of heading error weighted by targets, deg
-
-  long opened = 0;       ///< runs that finished the opening waypoint
-  double first_e = 0.0;  ///< sum of its energy, J
-  double first_v = 0.0;  ///< sum of its vibration, krad/s^2
 
   long finished = 0;    ///< runs that finished all `WAYPOINTS` waypoints
   double tour_e = 0.0;  ///< sum of whole-tour energy, J
@@ -344,10 +340,6 @@ accumulate(const std::string& path) {
       t.targets += scored;
       t.pos += number(field[pos_at]) * static_cast<double>(scored);
       t.yaw += number(field[yaw_at]) * static_cast<double>(scored);
-
-      ++t.opened;
-      for (const size_t at : energy[0]) t.first_e += number(field[at]);
-      for (const size_t at : vibration[0]) t.first_v += number(field[at]);
     }
 
     if (complete) {
@@ -415,9 +407,7 @@ std::string row(
       fixed(t.survival / runs, 1) + " s",
       t.targets > 0 ? fixed(t.pos / weight, 0) + " cm" : "-",
       t.targets > 0 ? fixed(t.yaw / weight, 0) + "°" : "-",
-      cell(t.first_e, t.opened, 0, " J"),
       cell(t.tour_e, t.finished, 0, " J"),
-      cell(t.first_v, t.opened, 0, ""),
       cell(t.tour_v, t.finished, 0, "")
   };
 
@@ -455,11 +445,9 @@ int main(
     }
 
     std::cout << "| `--policy` | completed | survived | pos err | yaw err "
-                 "| first<br>waypoint<br>battery<br>energy<br>consumed "
                  "| tour<br>battery<br>energy<br>consumed "
-                 "| first<br>waypoint<br>vibrations "
                  "| tour<br>vibrations |\n"
-              << "|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n";
+              << "|---:|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }

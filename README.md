@@ -158,22 +158,22 @@ Every policy is handed the same stance. The crane ramps the robot to the shared
 each checkpoint chose for itself, so what is measured is how well a policy takes
 over from a stance it was not necessarily trained around.
 
-| `--policy` | completed | survived | pos err | yaw err | first<br>waypoint<br>battery<br>energy<br>consumed | tour<br>battery<br>energy<br>consumed | first<br>waypoint<br>vibrations | tour<br>vibrations |
-|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | **78.9%** | 56.7 s | 10 cm | 3° | 279 J | 4947 J | 450 | 6879 |
-| `homie` | **71.0%** | 55.6 s | 18 cm | 34° | 380 J | 6530 J | 591 | 8654 |
-| `amo` | **69.9%** | 54.5 s | 23 cm | 12° | 330 J | 5420 J | 622 | 8402 |
-| `robomimic` | **65.2%** | 54.9 s | 11 cm | 4° | 237 J | 4438 J | 431 | 6577 |
-| `asap` | **53.5%** | 52.5 s | 13 cm | 10° | 265 J | 4813 J | 425 | 6277 |
-| `rl_mjlab` | **45.9%** | 51.0 s | 15 cm | 3° | 309 J | 5710 J | 440 | 6788 |
-| `holosoma` | **41.7%** | 50.1 s | 18 cm | 3° | 279 J | 4874 J | 274 | 4932 |
-| `run_residual` | **14.4%** | 39.2 s | 432 cm | 3° | 390 J | - | 494 | - |
-| `rl_lab` | **7.3%** | 36.3 s | 14 cm | 65° | 216 J | - | 362 | - |
-| `falcon` | **2.3%** | 28.3 s | 34 cm | 4° | 295 J | - | 440 | - |
-| `rl_gym` | **1.1%** | 23.9 s | 58 cm | 6° | 1065 J | - | 3079 | - |
-| `openwbt` | **1.0%** | 26.1 s | 10 cm | 36° | 297 J | - | 845 | - |
-| `clobot` | **0.0%** | 2.2 s | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~34 cm~~ | ~~5°~~ | ~~304 J~~ | - | ~~359~~ | - |
+| `--policy` | completed | survived | pos err | yaw err | tour<br>battery<br>energy<br>consumed | tour<br>vibrations |
+|---:|---:|---:|---:|---:|---:|---:|
+| `gr00t_wbc` | **78.9%** | 56.7 s | 10 cm | 3° | 4947 J | 6879 |
+| `homie` | **71.0%** | 55.6 s | 18 cm | 34° | 6530 J | 8654 |
+| `amo` | **69.9%** | 54.5 s | 23 cm | 12° | 5420 J | 8402 |
+| `robomimic` | **65.2%** | 54.9 s | 11 cm | 4° | 4438 J | 6577 |
+| `asap` | **53.5%** | 52.5 s | 13 cm | 10° | 4813 J | 6277 |
+| `rl_mjlab` | **45.9%** | 51.0 s | 15 cm | 3° | 5710 J | 6788 |
+| `holosoma` | **41.7%** | 50.1 s | 18 cm | 3° | 4874 J | 4932 |
+| `run_residual` | **14.4%** | 39.2 s | 432 cm | 3° | - | - |
+| `rl_lab` | **7.3%** | 36.3 s | 14 cm | 65° | - | - |
+| `falcon` | **2.3%** | 28.3 s | 34 cm | 4° | - | - |
+| `rl_gym` | **1.1%** | 23.9 s | 58 cm | 6° | - | - |
+| `openwbt` | **1.0%** | 26.1 s | 10 cm | 36° | - | - |
+| `clobot` | **0.0%** | 2.2 s | - | - | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~34 cm~~ | ~~5°~~ | - | - |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -282,46 +282,40 @@ make table && ./build/table | diff - <(sed -n '/^| `--policy`/,/^$/p' README.md)
 
 ### What the tour costs
 
-The last four columns come from the per-waypoint `s<i>_` columns, summed across
-all five joint groups. The **first waypoint** figures are what a policy spent in
-the opening five seconds, over every run that got through them. The **tour**
-figures are what a whole 60 s tour cost, averaged over completed runs only —
-those are the only runs in which all twelve waypoints ran their clock, so the
-only ones whose totals mean the same thing.
+The last two columns come from the per-waypoint `s<i>_` columns, summed across
+all five joint groups and over all twelve waypoints. They are averaged over
+completed runs only — those are the only runs in which all twelve waypoints ran
+their clock, and so the only ones whose totals mean the same thing — and are
+blank unless at least 2000 runs stand behind the average. Seven policies clear
+that; the rest finish fewer than two thousand of their ten thousand tours, and
+`clobot` finishes no waypoint at all. They are survivor figures by construction:
+they say what a tour cost the runs that completed it, not what it costs on
+average.
 
 Every cost and error column is reported in whole units, which is as much
 precision as a mean over ten thousand runs is worth reading. Energy itself is
-mechanical work at the joints,
-`Σ|τ·ω|·dt`, which is a floor on
-what a battery would actually deliver rather than the draw itself: it counts no
-drivetrain loss and no current spent holding a limb still against gravity. Two
-policies an equal distance apart on this column would be further apart on a real
-robot, not closer.
+mechanical work at the joints, `Σ|τ·ω|·dt`, which is a floor on what a battery
+would actually deliver rather than the draw itself: it counts no drivetrain loss
+and no current spent holding a limb still against gravity. Two policies an equal
+distance apart on this column would be further apart on a real robot, not
+closer.
 
-Both are blank unless at least 2000 runs stand behind the average. Every policy
-clears that for the first waypoint; only seven clear it for the tour, the rest
-completing fewer than two thousand of their ten thousand tours. `clobot`
-finishes no waypoint at all and has neither. The `tour` columns are survivor
-figures by construction: they say what the tour cost the runs that finished it,
-not what it costs on average.
-
-**`rl_gym` is the outlier that explains its row.** It burns 1065 J in the first
-waypoint against `gr00t_wbc`'s 279 — 3.8× — and shakes 6.8× as hard, 3079
-against 450. It is not walking so much as vibrating along the tour, and
-it completes 1.1%.
-
-**Cost does not predict standing up.** `rl_lab` spends the least of any policy
-in the first waypoint, 216 J, and completes 7.3%. `holosoma` is the smoothest
-in the field at both ends — 274 in the first waypoint and 4932 over a tour,
-well under everyone else — and completes 41.7%. Nothing about walking cheaply or
-smoothly keeps a policy upright when the punches start.
-
-**What it does show is the price of a finish.** `homie` completes 71.0% to
+**What the columns show is the price of a finish.** `homie` completes 71.0% to
 `gr00t_wbc`'s 78.9% but pays 6530 J and 8654 for its tours against 4947 J and
 6879 — a third more energy and a quarter more shake for a worse result.
-`gr00t_wbc` is neither the cheapest nor the smoothest, and `robomimic` finishes
-a tour on less energy than anyone at 4438 J; the winner is simply the one that
-converts what it spends into staying upright.
+`gr00t_wbc` is neither the cheapest nor the smoothest: `robomimic` finishes a
+tour on less energy than anyone at 4438 J, and `holosoma` shakes least at 4932
+against `gr00t_wbc`'s 6879 while completing 41.7%. The winner is simply the one
+that converts what it spends into staying upright.
+
+**The rows with no figures are where the cost is most telling**, and the
+per-waypoint columns in `results/result.csv` carry it even though this table
+cannot. Over its opening waypoint `rl_lab` spends less than any policy in the
+field, 216 J, and completes 7.3%. `rl_gym` spends 1065 J there against
+`gr00t_wbc`'s 279 and shakes 3079 against 450 — 3.8× the energy and 6.8× the
+vibration — and completes 1.1%. It is not walking so much as vibrating along the
+tour. Neither cheap nor expensive predicts standing up; only the completion
+column does.
 
 ## Inference
 
