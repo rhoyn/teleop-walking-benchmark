@@ -12,19 +12,20 @@ recorded here.
 
 Twenty-nine policies, and every checkpoint they load is third-party. Nineteen
 weight files are committed beside the policy that loads them; ./download_weights.sh
-pulls fourteen from their upstream repositories, so you take those under the
+pulls sixteen from their upstream repositories, so you take those under the
 upstream's terms rather than under this repository's; ./export_onnx.py converts
-one on your machine. Five cannot be obtained automatically at all and are marked
-"no automated path" below -- running those five policies means producing the file
-yourself.
+three on your machine. Three cannot be obtained automatically at all and are
+marked "no automated path" below -- running those three policies means producing
+the file yourself.
 
 Some rows are ONNX conversions, written by ./export_onnx.py from the TorchScript
 checkpoints above them so that a policy can run on TensorRT. A conversion is a
 derivative of its source and carries the source's terms unchanged -- putting a
 weight in another container grants no right that did not already exist. So each
 conversion ships only where its source's terms allow it to: amo's and rl_gym's
-are committed because their checkpoints are redistributable, and robomimic's is
-generated on your machine because its checkpoint declares no licence at all.
+are committed because their checkpoints are redistributable, while robomimic's,
+g1_gym's and stepdown's are generated on your machine because those checkpoints
+declare no licence at all.
 The amo and rl_gym checkpoints themselves are fetched rather than committed --
 that is a repository-size choice about PyTorch blobs, not a licence one, and it
 does not affect their conversions.
@@ -118,9 +119,10 @@ refuses a download that does not match it.
     datamentorshf/dm-g1-military-march-rl, exported/policy.onnx
     https://huggingface.co/datamentorshf/dm-g1-military-march-rl
 
-  g1_gym  policies/g1_gym/model.onnx  e2c2  NONE DECLARED  not shipped, no automated path
-    IlikeSukiyaki/G1_GYM, converted locally from a checkpoint under
-    legged_gym/sim2mujoco/pre_train/ that export_onnx.py does not handle
+  g1_gym  policies/g1_gym/model.pt  aaef  NONE DECLARED  ./download_weights.sh
+  g1_gym  policies/g1_gym/model.onnx  e2c2  NONE DECLARED  ./export_onnx.py, from model.pt
+    IlikeSukiyaki/G1_GYM, .../pre_train/g1_full/4_26_policy_lstm_16000.pt
+    (byte-identical to the ..._g1_29dof_lock_waist_rev_1_0.pt beside it)
     https://github.com/IlikeSukiyaki/G1_GYM
 
   grove  policies/grove/model.onnx  8995  BSD-3-Clause  committed
@@ -150,8 +152,10 @@ refuses a download that does not match it.
     of the upstream planner_sonic.onnx, which no script here reproduces
     https://huggingface.co/BlackCatRoboticsAI/g1-sonic-base
 
-  stepdown  policies/stepdown/model.onnx  2030  NONE DECLARED  not shipped, no automated path
-    arushbisht12/unitree-g1-stepdown-safety, converted locally from motion.pt
+  stepdown  policies/stepdown/model.pt  3c3d  NONE DECLARED  ./download_weights.sh
+  stepdown  policies/stepdown/model.onnx  2030  NONE DECLARED  ./export_onnx.py, from model.pt
+    arushbisht12/unitree-g1-stepdown-safety, safety_motion.pt -- not the
+    motion.pt beside it, which is a different network
     https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety
 
   wbc_agile  policies/wbc_agile/model.onnx  f9a8  Apache-2.0  committed

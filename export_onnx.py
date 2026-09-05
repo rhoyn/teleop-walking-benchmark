@@ -43,6 +43,25 @@ class RoboMimic(nn.Module):
         return self.actor(out.squeeze(0)), hn, cn
 
 
+class G1Gym(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.memory = nn.LSTM(90, 64, 1)
+        self.actor = nn.Sequential(
+            nn.Linear(64, 512),
+            nn.ELU(),
+            nn.Linear(512, 256),
+            nn.ELU(),
+            nn.Linear(256, 128),
+            nn.ELU(),
+            nn.Linear(128, 27),
+        )
+
+    def forward(self, x, h, c):
+        out, (hn, cn) = self.memory(x.unsqueeze(0), (h, c))
+        return self.actor(out.squeeze(0)), hn, cn
+
+
 def require_cuda():
     if not torch.cuda.is_available():
         raise RuntimeError(
@@ -89,7 +108,7 @@ def export_stateless(src, dst, example, in_names, out_names):
     )
 
 
-def export_recurrent(src, dst, net, obs_dim, hidden, drop, rename):
+def export_recurrent(src, dst, net, obs_dim, hidden, drop, rename, carries_state=True):
     original = torch.jit.load(src, map_location="cpu")
     original.eval()
     state = original.state_dict()
@@ -101,15 +120,18 @@ def export_recurrent(src, dst, net, obs_dim, hidden, drop, rename):
     net.eval()
 
     with torch.no_grad():
-        original.hidden_state.zero_()
-        original.cell_state.zero_()
+        if carries_state:
+            original.hidden_state.zero_()
+            original.cell_state.zero_()
         h = torch.zeros(1, 1, hidden)
         c = torch.zeros(1, 1, hidden)
         for _ in range(STEPS):
             x = torch.randn(1, obs_dim)
             ref = original(x)
-            got, h, c = net(x, h, c)
+            got, hn, cn = net(x, h, c)
             agree(f"{dst} rebuild", [ref.numpy()], [got.numpy()])
+            if carries_state:
+                h, c = hn, cn
 
     example = (
         torch.randn(1, obs_dim),
@@ -179,6 +201,35 @@ def main():
             "normalizer.count",
         },
         {"normalizer._mean": "mean", "normalizer._std": "std"},
+    )
+
+    export_recurrent(
+        "policies/g1_gym/model.pt",
+        "policies/g1_gym/model.onnx",
+        G1Gym(),
+        90,
+        64,
+        {"hidden_state", "cell_state"},
+        {},
+    )
+
+    # stepdown's upstream wrapper is a plain PolicyExporter, not the
+    # PolicyExporterLSTM the other two use: it holds no hidden_state or
+    # cell_state buffer and passes None as the LSTM's initial state, so a
+    # single-step call always starts from zeros. The ONNX this benchmark
+    # measured threads h and c between steps instead, which is what the
+    # network was trained to expect. carries_state=False keeps the check
+    # honest -- each step is compared against the source from zero state,
+    # which is the only regime where the two agree by construction.
+    export_recurrent(
+        "policies/stepdown/model.pt",
+        "policies/stepdown/model.onnx",
+        RlGym(),
+        47,
+        64,
+        set(),
+        {},
+        carries_state=False,
     )
 
 

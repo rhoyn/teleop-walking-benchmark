@@ -58,6 +58,14 @@ WEIGHTS=(
   "policies/sonic/model_encoder.onnx"
   "013ab0287236aa2721e13f1e936d699db982302d0de0bfcdae76d5c3245362d3"
   "https://huggingface.co/BlackCatRoboticsAI/g1-sonic-base/resolve/5ff852359854df09caab7c3733440322234a2def/model_encoder.onnx"
+
+  "policies/g1_gym/model.pt"
+  "aaef00b10c001612638551670e3ecacbad11c3116c2cd2dfdee1b37add02e600"
+  "https://raw.githubusercontent.com/IlikeSukiyaki/G1_GYM/1e5aa629187d7da31ce1f832071bd0a478b0f9aa/legged_gym/sim2mujoco/pre_train/g1_full/4_26_policy_lstm_16000.pt"
+
+  "policies/stepdown/model.pt"
+  "3c3ddea79f3010640493bd65c39c7bdf8784131d923f1f1401c7957ba1adade6"
+  "https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety/resolve/fd97d9ac2eccda849e6f7440a4c400a6cd3697ae/safety_motion.pt"
 )
 
 for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do

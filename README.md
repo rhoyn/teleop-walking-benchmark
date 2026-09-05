@@ -5,8 +5,8 @@ Blog post: [Stable walk](https://rhoyn.com/stable-walk?utm_source=github)
 Twenty-nine open-source Unitree G1 walking policies ported to one C++ interface
 and scored against the same waypoint tour in MuJoCo. Nineteen of their
 weight files are committed under `policies/`; `./download_weights.sh` fetches
-fourteen whose licences do not permit redistribution here, `./export_onnx.py`
-converts one, and five have no automated path at all — see
+sixteen whose licences do not permit redistribution here, `./export_onnx.py`
+converts three, and three have no automated path at all — see
 [Policy weights](#policy-weights).
 
 The difficulty is deliberate. A benchmark every candidate completes ranks
@@ -408,9 +408,9 @@ calls against 3,000 policy steps, and inference is under 3% of a run.
 ## Policy weights
 
 Every checkpoint is third-party. Nineteen weight files are committed beside the
-policy that loads them; `./download_weights.sh` pulls fourteen more from their
+policy that loads them; `./download_weights.sh` pulls sixteen more from their
 upstream repositories and checks each file's sha256 as it lands; `./export_onnx.py`
-converts one on your machine.
+converts three on your machine.
 
 A checkpoint's licence travels to anything derived from it, so a conversion
 ships only where its source's terms allow it. `amo`'s and `rl_gym`'s conversions
@@ -420,15 +420,22 @@ about PyTorch blobs and not a licence one. `robomimic`'s checkpoint declares no
 licence at all, so its conversion is generated on your machine rather than
 committed. Converting a file to another format does not make it redistributable.
 
-**Five policies do not run from a clean clone**, and they are named here rather
-than left to fail at run time. `g1_gym` and `stepdown` load an ONNX converted
-locally from an upstream `.pt` that `export_onnx.py` does not handle, and both
-upstreams are unlicensed. `sonic`'s planner is a local float32 conversion of the
-upstream file, which no script here reproduces. `bfm_zero` needs an 8 KB latent
-table derived from a CC BY-NC pickle. `wcompton`'s upstream repository has been
-deleted outright and returns HTTP 404, so its checkpoint cannot be fetched from
-anywhere. Their figures in the table are real measurements taken on this
+**Three policies do not run from a clean clone**, and they are named here rather
+than left to fail at run time. `sonic`'s planner is a local float32 conversion of
+the upstream file, which no script here reproduces. `bfm_zero` needs an 8 KB
+latent table derived from a CC BY-NC pickle. `wcompton`'s upstream repository has
+been deleted outright and returns HTTP 404, so its checkpoint cannot be fetched
+from anywhere. Their figures in the table are real measurements taken on this
 machine; obtaining the weights is on you.
+
+`g1_gym` and `stepdown` were in that list until their conversions were written.
+Both upstreams ship a TorchScript checkpoint rather than an ONNX, so
+`./download_weights.sh` fetches the `.pt` and `./export_onnx.py` rebuilds the
+network and exports it, refusing to write a file that disagrees with its source
+by more than 1e-4. `stepdown` is worth a note: its upstream wrapper passes no
+initial state to its own LSTM, so a single-step call there always starts from
+zeros, whereas the ONNX measured here threads the hidden and cell state between
+steps. The weights are the same; the state handling is this port's choice.
 
 Every checkpoint is third-party, as are the Unitree G1 description under
 `assets/` and the bundled font. Their provenance and terms — which two are
