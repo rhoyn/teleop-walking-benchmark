@@ -3,9 +3,21 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 WEIGHTS=(
+  "policies/amo/model.pt"
+  "6d867ed2dd2261d0f02a5e81d2b7f92802be30f3d36570fb7c4b18707649ef3f"
+  "https://raw.githubusercontent.com/OpenTeleVision/AMO/34caaf943660e6f9420e35f64e86dd56fb51dd0e/amo_jit.pt"
+
+  "policies/amo/model_adapter.pt"
+  "159c5f691e55f68c68e2d98e287f4f87baa54e79759c04e06af3bdbc8f8edc98"
+  "https://raw.githubusercontent.com/OpenTeleVision/AMO/34caaf943660e6f9420e35f64e86dd56fb51dd0e/adapter_jit.pt"
+
   "policies/homie/model.onnx"
   "afe6363c83c8b9ab8b1a2fed598fce7de35ff045eee1a95b336fd6720e3d3d49"
   "https://raw.githubusercontent.com/InternRobotics/OpenHomie/cefcd85fcf81f529e8be065795fb2a7273e69435/HomieDeploy/deploy.onnx"
+
+  "policies/rl_gym/model.pt"
+  "cf668f75b90d1abf73d2b87612a6e76bccc61ff7e083b63582d3f6aaa3c1759d"
+  "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_gym/276801e46c5d433564f24658bac64f254b7d2d4b/deploy/pre_train/g1/motion.pt"
 
   "policies/robomimic/model.pt"
   "d1d91b0201beeb649a4624ba40052d10fe4aebe98bf6f4847decf75dd1fee2da"
