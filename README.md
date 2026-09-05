@@ -158,21 +158,21 @@ each checkpoint chose for itself, so what is measured is how well a policy takes
 over from a stance it was not necessarily trained around.
 
 | `--policy` | completed | survived | pos err | yaw err |
-|---|---|---|---|---|
-| `gr00t_wbc` | **7894/10000** | 56.7 s | 9.54 cm | 2.91° |
-| `homie` | **7104/10000** | 55.6 s | 17.94 cm | 34.46° |
-| `amo` | **6987/10000** | 54.5 s | 23.03 cm | 12.08° |
-| `robomimic` | **6515/10000** | 54.9 s | 11.10 cm | 3.60° |
-| `asap` | **5353/10000** | 52.5 s | 13.16 cm | 9.95° |
-| `rl_mjlab` | **4592/10000** | 51.0 s | 14.74 cm | 3.42° |
-| `holosoma` | **4169/10000** | 50.1 s | 18.07 cm | 3.14° |
-| `run_residual` | **1435/10000** | 39.2 s | 432.32 cm | 3.24° |
-| `rl_lab` | **731/10000** | 36.3 s | 13.75 cm | 65.47° |
-| `falcon` | **226/10000** | 28.3 s | 33.64 cm | 4.07° |
-| `rl_gym` | **114/10000** | 23.9 s | 57.89 cm | 6.22° |
-| `openwbt` | **104/10000** | 26.1 s | 10.37 cm | 35.88° |
-| `clobot` | **0/10000** | 2.2 s | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**855/10000**~~ | ~~33.1 s~~ | ~~33.81 cm~~ | ~~5.01°~~ |
+|---:|---:|---:|---:|---:|
+| `gr00t_wbc` | **78.9%** | 56.7 s | 9.5 cm | 2.9° |
+| `homie` | **71.0%** | 55.6 s | 17.9 cm | 34.5° |
+| `amo` | **69.9%** | 54.5 s | 23.0 cm | 12.1° |
+| `robomimic` | **65.2%** | 54.9 s | 11.1 cm | 3.6° |
+| `asap` | **53.5%** | 52.5 s | 13.2 cm | 9.9° |
+| `rl_mjlab` | **45.9%** | 51.0 s | 14.7 cm | 3.4° |
+| `holosoma` | **41.7%** | 50.1 s | 18.1 cm | 3.1° |
+| `run_residual` | **14.4%** | 39.2 s | 432.3 cm | 3.2° |
+| `rl_lab` | **7.3%** | 36.3 s | 13.7 cm | 65.5° |
+| `falcon` | **2.3%** | 28.3 s | 33.6 cm | 4.1° |
+| `rl_gym` | **1.1%** | 23.9 s | 57.9 cm | 6.2° |
+| `openwbt` | **1.0%** | 26.1 s | 10.4 cm | 35.9° |
+| `clobot` | **0.0%** | 2.2 s | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~33.8 cm~~ | ~~5.0°~~ |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -203,7 +203,7 @@ inflates them by an order of magnitude. Measure those solo.
 **`gr00t_wbc` now wins every column.** Fewest falls, longest survival, lowest
 position error and lowest yaw error — the first time one policy has taken all
 four. It held the first three on the old tour but lost position error to
-`openwbt`; at ten thousand seeds it takes that too, 9.54 cm against 10.37 cm,
+`openwbt`; at ten thousand seeds it takes that too, 9.5 cm against 10.4 cm,
 and this time on a row that finishes four fifths of its tours rather than none.
 It clears second place by eight points of completion, 78.9% against `homie`'s
 71.0%. First place is not close.
@@ -217,7 +217,7 @@ the point of being the limiting factor: what separates these policies now is the
 tour, not the statistics.
 
 **`openwbt` is accurate and still cannot finish**: second-best mean position
-error in the field and 104 completions in ten thousand tries. Its 35.88° yaw
+error in the field and 104 completions in ten thousand tries. Its 35.9° yaw
 error is where it goes — capped at its published 0.3 m/s, it cannot hold heading
 on the harder draws.
 
