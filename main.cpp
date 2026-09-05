@@ -30,6 +30,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <numeric>
@@ -326,6 +327,61 @@ inline const Eigen::Vector<double, NUM_MOTOR> DEFAULT_ANGLES = {
     -0.363, 0.0, 0.0, 0.0,   0.0,    0.2, 0.2,    0.0, 0.6, 0.0,
     0.0,    0.0, 0.2, -0.2,  0.0,    0.6, 0.0,    0.0, 0.0
 };
+
+/**
+ * Where each arm starts in `JOINT_NAMES`, and how many joints it has.
+ *
+ * The seven are the same seven on both sides and in the same order, which
+ * is what makes one drawn arm enough to pose both.
+ */
+inline constexpr int ARM_LEFT_FIRST = 15;
+inline constexpr int ARM_RIGHT_FIRST = 22;
+inline constexpr int ARM_DOF = 7;
+
+/**
+ * Sign that turns a left-arm angle into the right arm's mirror of it.
+ *
+ * Pitch and elbow are shared outright; the axes that point across the robot
+ * — the two rolls and the two yaws — flip. The joint limits are mirrored
+ * the same way in the model, so an angle inside the left arm's range is
+ * inside the right arm's once negated, and the walk only has to clamp once.
+ */
+inline constexpr double ARM_MIRROR[ARM_DOF] =
+    {1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0};
+
+/**
+ * How far one draw may move one arm joint, in radians.
+ *
+ * The draw itself is uniform on [-1, 1) per joint; this is what it is
+ * scaled by before it is added to the target the arms are already holding.
+ * At 0.06 rad a joint moves at most 3 rad/s and the hands travel at about
+ * 0.8 m/s, which is an operator working the arms briskly rather than
+ * gesturing with them. Raise it and the arms are thrown around harder; the
+ * constraints below hold either way.
+ */
+inline constexpr double ARM_STEP_RAD = 0.06;
+
+/**
+ * How many draws one step may spend before the arms simply hold still.
+ *
+ * A draw that would fold a hand into the robot, put it behind the torso or
+ * lift it past the head is thrown away and redrawn. Near a bound most of a
+ * step's draws can be refused, so a step that spends all of these keeps the
+ * pose it had: a held arm for one control period is a far smaller lie than
+ * a hand inside the chest.
+ */
+inline constexpr int ARM_DRAWS = 8;
+
+/**
+ * Mixed into the seed that draws the arms.
+ *
+ * The arms are drawn from the run's own seed so that a seed still names a
+ * whole task and a repeated seed still reproduces bit for bit. The salt
+ * keeps that stream off the one the waypoints and punches are drawn from,
+ * so two runs of the same seed do not have their arms and their tour
+ * shifted against each other by an extra draw somewhere.
+ */
+inline constexpr uint32_t ARM_SEED_SALT = 0x9e3779b9u;
 
 /**
  * Control period, in seconds.
@@ -762,7 +818,8 @@ struct Input {
 
   bool new_target;  ///< first step on this target; latches must reset
 
-  const double* arm_targets;  ///< NUM_MOTOR poses for joints left unowned
+  const double* arm_targets;  ///< NUM_MOTOR poses for joints left unowned,
+                              ///< the arms among them moving every step
 
   double control_time;  ///< seconds since the crane released
 
@@ -775,9 +832,10 @@ struct Input {
  * One control step's worth of answer, as `step` returns it.
  *
  * A policy declares per joint whether it is driving it. Whatever it leaves
- * unowned is held at `DEFAULT_ANGLES` on the shared gains, which is what
- * lets a lower-body checkpoint run this tour at all rather than being
- * disqualified for having no opinion about the arms.
+ * unowned is driven to `Input::arm_targets` on the shared gains — the
+ * stance for the legs and the waist, and this step of the arm walk for the
+ * arms — which is what lets a lower-body checkpoint run this tour at all
+ * rather than being disqualified for having no opinion about the arms.
  */
 struct Output {
   double q_target[NUM_MOTOR];  ///< position targets, rad
@@ -1898,6 +1956,7 @@ void score_target(Loop& loop) {
  * @param[in] state     robot as its own sensors see it
  * @param[in] world     pelvis pose, for anchoring and scoring
  * @param[in] now       simulated time, s
+ * @param[in] arm_pose  NUM_MOTOR stance with this step's arms written in
  * @returns the command to apply and what the step decided
  * @exceptsafe basic
  */
@@ -1905,7 +1964,8 @@ Tick loop_step(
     Loop& loop,
     const RobotState& state,
     const WorldPose& world,
-    double now
+    double now,
+    const double* arm_pose
 ) {
   if (loop.start_time < 0.0) loop.start_time = now;
   const double elapsed = now - loop.start_time;
@@ -1932,7 +1992,7 @@ Tick loop_step(
 
   if (loop.phase == Phase::DONE) {
     tick.phase = Phase::DONE;
-    tick.command = hold_command(DEFAULT_ANGLES.data());
+    tick.command = hold_command(arm_pose);
     return tick;
   }
 
@@ -1979,17 +2039,12 @@ Tick loop_step(
     loop.phase = Phase::DONE;
   }
 
-  double arm_targets[NUM_MOTOR];
-  for (int i = 0; i < NUM_MOTOR; ++i) {
-    arm_targets[i] = DEFAULT_ANGLES[i];
-  }
-
   const Input in{
       &state,
       forward,
       left,
       new_target,
-      arm_targets,
+      arm_pose,
       control_time,
       dist,
       yaw_err,
@@ -2007,7 +2062,7 @@ Tick loop_step(
   loop.step_max_us = std::max(loop.step_max_us, step_us);
   ++loop.step_count;
 
-  MotorCommand command = hold_command(DEFAULT_ANGLES.data());
+  MotorCommand command = hold_command(arm_pose);
   for (int i = 0; i < NUM_MOTOR; ++i) {
     if (!out.owns[i]) continue;
     command.q_target[i] = static_cast<float>(out.q_target[i]);
@@ -2516,6 +2571,339 @@ void reset_to_stance(Handles& h) {
     h.d->qpos[h.qpos_adr[i]] = DEFAULT_ANGLES[i];
   }
   mj_forward(h.m, h.d);
+}
+
+/**
+ * Frees an `mjData` through a type the standard library can default
+ * construct, which a bare function pointer is not.
+ */
+struct DataDeleter {
+  void operator()(mjData* d) const { mj_deleteData(d); }
+};
+
+/**
+ * The arms the operator is busy with, redrawn every control step.
+ *
+ * The tour does not hand the robot a fixed arm pose. It hands it an arm
+ * pose that will have moved by the next control step: every step adds a
+ * uniform draw to the angles the arms are already being asked for, clamped
+ * to what the model says those joints can do. That is the whole model of an
+ * operator — no trajectory, no task, just a load that never settles.
+ *
+ * Two things constrain the draw and nothing else does. The arms are posed
+ * as mirror images, so the pair stays symmetric however far it wanders and
+ * the disturbance the legs feel is a fore-and-aft one rather than a
+ * permanent list to one side. And a drawn pose is kept only if it puts both
+ * hands in front of the robot, below its head, and through neither itself
+ * nor the floor; a pose that fails is thrown away and the draw is taken
+ * again. Everything inside that is fair game, which is the point: a policy
+ * cannot learn where the hands will be, only that they will be somewhere
+ * ahead of the chest and moving.
+ *
+ * The two bounds are read off the model rather than written down here. The
+ * front bound is where the stance itself puts the hands, so the arms are
+ * never allowed further back than the pose every run starts from; the
+ * ceiling is the lowest point of the head, which rides on the torso and so
+ * sits at a fixed height in the frame both are measured in.
+ */
+struct ArmWalk {
+  mjModel* m = nullptr;                        ///< the loaded scene, not owned
+  std::unique_ptr<mjData, DataDeleter> probe;  ///< candidates, tried in here
+  std::mt19937 rng;                            ///< this run's arm stream
+
+  int qpos_adr[NUM_MOTOR] = {};  ///< qpos slot per joint, MuJoCo order
+  double left[ARM_DOF] = {};     ///< the angles the walk carries
+  double pose[NUM_MOTOR] = {};   ///< stance with both arms written in
+
+  double lo[ARM_DOF] = {};  ///< the model's own limits, left arm
+  double hi[ARM_DOF] = {};  ///< the model's own limits, left arm
+
+  int torso = 0;                ///< frame the two bounds are read in
+  int hand_geom[2] = {-1, -1};  ///< the geoms a hand is measured by
+  double corner[2][8][3] = {};  ///< that geom's box, in its own frame
+  double front_m = 0.0;         ///< hands stay at least this far ahead
+  double head_m = 0.0;          ///< and no higher than this
+
+  std::vector<char> arm_geom;  ///< geoms a contact may not involve
+};
+
+/**
+ * Box one hand off in the torso's frame.
+ *
+ * The eight corners of the hand mesh's own box are carried through the
+ * candidate's kinematics rather than every vertex of the mesh: the answer
+ * is the same to within the box, and it is cheap enough to ask of every
+ * draw. The torso frame is the one the constraints mean something in — in
+ * front of the robot and below its head, not of the arena.
+ *
+ * @param[in] w     the walk, whose probe holds the pose being measured
+ * @param[in] side  0 for the left hand, 1 for the right
+ * @param[out] lo   the box's low corner, torso frame, m
+ * @param[out] hi   the box's high corner, torso frame, m
+ * @exceptsafe no-throw
+ */
+void hand_box(
+    const ArmWalk& w,
+    int side,
+    double lo[3],
+    double hi[3]
+) {
+  const mjData* d = w.probe.get();
+  const int g = w.hand_geom[side];
+  for (int k = 0; k < 3; ++k) {
+    lo[k] = std::numeric_limits<double>::max();
+    hi[k] = std::numeric_limits<double>::lowest();
+  }
+  for (int c = 0; c < 8; ++c) {
+    double turned[3];
+    mju_mulMatVec3(turned, d->geom_xmat + 9 * g, w.corner[side][c]);
+    double offset[3];
+    for (int k = 0; k < 3; ++k) {
+      offset[k] =
+          turned[k] + d->geom_xpos[3 * g + k] - d->xpos[3 * w.torso + k];
+    }
+    double rel[3];
+    mju_mulMatTVec3(rel, d->xmat + 9 * w.torso, offset);
+    for (int k = 0; k < 3; ++k) {
+      lo[k] = std::min(lo[k], rel[k]);
+      hi[k] = std::max(hi[k], rel[k]);
+    }
+  }
+}
+
+/**
+ * Is the pose in the probe one the tour is willing to ask for?
+ *
+ * Contacts are only held against the draw if an arm is in them: the feet
+ * are on the floor at every step of every run, and a walk that refused
+ * every pose because of them would never move at all.
+ *
+ * @param[in] w  the walk, whose probe has been brought forward
+ * @returns true if both hands are in front, below the head and touching
+ *          nothing they should not
+ * @exceptsafe no-throw
+ */
+bool arm_pose_ok(const ArmWalk& w) {
+  for (int side = 0; side < 2; ++side) {
+    double lo[3];
+    double hi[3];
+    hand_box(w, side, lo, hi);
+    if (lo[0] < w.front_m) return false;
+    if (hi[2] > w.head_m) return false;
+  }
+  const mjData* d = w.probe.get();
+  for (int c = 0; c < d->ncon; ++c) {
+    if (d->contact[c].dist >= 0.0) continue;
+    if (w.arm_geom[d->contact[c].geom[0]] ||
+        w.arm_geom[d->contact[c].geom[1]]) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Resolve everything the arm walk will need, once, at load.
+ *
+ * The bounds the draw is filtered against are measured here from the stance
+ * rather than written down, so a change to `DEFAULT_ANGLES` or to the model
+ * moves them with it and the stance is always a pose the walk could have
+ * drawn — which is what lets the arms start walking the moment the crane
+ * lets go without a jump.
+ *
+ * @param[in] m     the loaded scene
+ * @param[in] seed  the run's seed; the arms take a salted stream off it
+ * @returns a walk sitting at the stance
+ * @throws std::runtime_error if the model is missing an arm joint, a hand,
+ *         a head or a torso, or if an arm joint has no range to respect
+ * @exceptsafe strong
+ */
+ArmWalk arm_walk_make(
+    mjModel* m,
+    uint32_t seed
+) {
+  ArmWalk w;
+  w.m = m;
+  w.rng.seed(seed ^ ARM_SEED_SALT);
+  w.probe.reset(mj_makeData(m));
+  if (w.probe == nullptr) {
+    throw std::runtime_error("sim: cannot allocate the arm probe");
+  }
+
+  for (int i = 0; i < NUM_MOTOR; ++i) {
+    const int joint = require_id(m, mjOBJ_JOINT, JOINT_NAMES[i], "joint");
+    w.qpos_adr[i] = m->jnt_qposadr[joint];
+    w.pose[i] = DEFAULT_ANGLES[i];
+  }
+  for (int i = 0; i < ARM_DOF; ++i) {
+    // The mirror table is only right if the two arms are the same joints in
+    // the same order, so the layout is checked rather than trusted.
+    const std::string left = JOINT_NAMES[ARM_LEFT_FIRST + i];
+    if ("right" + left.substr(std::string("left").size()) !=
+        JOINT_NAMES[ARM_RIGHT_FIRST + i]) {
+      throw std::runtime_error("sim: the arm joints are not mirrored in order");
+    }
+    const int joint =
+        require_id(m, mjOBJ_JOINT, JOINT_NAMES[ARM_LEFT_FIRST + i], "joint");
+    if (m->jnt_limited[joint] == 0) {
+      throw std::runtime_error(
+          std::string("sim: ") + JOINT_NAMES[ARM_LEFT_FIRST + i] +
+          " has no range for the arms to respect"
+      );
+    }
+    w.lo[i] = m->jnt_range[2 * joint];
+    w.hi[i] = m->jnt_range[2 * joint + 1];
+    w.left[i] = DEFAULT_ANGLES[ARM_LEFT_FIRST + i];
+  }
+
+  w.torso = require_id(m, mjOBJ_BODY, "torso_link", "body");
+  const char* hand_mesh[2] = {"left_rubber_hand", "right_rubber_hand"};
+  for (int side = 0; side < 2; ++side) {
+    const int mesh = require_id(m, mjOBJ_MESH, hand_mesh[side], "mesh");
+    for (int g = 0; g < m->ngeom; ++g) {
+      if (m->geom_type[g] == mjGEOM_MESH && m->geom_dataid[g] == mesh &&
+          m->geom_contype[g] != 0) {
+        w.hand_geom[side] = g;
+        break;
+      }
+    }
+    if (w.hand_geom[side] < 0) {
+      throw std::runtime_error(
+          std::string("sim: ") + hand_mesh[side] + " has no colliding geom"
+      );
+    }
+    double lo[3];
+    double hi[3];
+    for (int k = 0; k < 3; ++k) {
+      lo[k] = std::numeric_limits<double>::max();
+      hi[k] = std::numeric_limits<double>::lowest();
+    }
+    const int adr = m->mesh_vertadr[mesh];
+    const int verts = m->mesh_vertnum[mesh];
+    for (int v = 0; v < verts; ++v) {
+      for (int k = 0; k < 3; ++k) {
+        const double c = m->mesh_vert[3 * (adr + v) + k];
+        lo[k] = std::min(lo[k], c);
+        hi[k] = std::max(hi[k], c);
+      }
+    }
+    for (int c = 0; c < 8; ++c) {
+      w.corner[side][c][0] = (c & 1) != 0 ? hi[0] : lo[0];
+      w.corner[side][c][1] = (c & 2) != 0 ? hi[1] : lo[1];
+      w.corner[side][c][2] = (c & 4) != 0 ? hi[2] : lo[2];
+    }
+  }
+
+  // A geom belongs to an arm if a shoulder is anywhere above it in the body
+  // tree, which is how a contact is recognised as one the draw caused.
+  const int shoulder[2] = {
+      require_id(m, mjOBJ_BODY, "left_shoulder_pitch_link", "body"),
+      require_id(m, mjOBJ_BODY, "right_shoulder_pitch_link", "body")
+  };
+  w.arm_geom.assign(m->ngeom, 0);
+  for (int g = 0; g < m->ngeom; ++g) {
+    for (int b = m->geom_bodyid[g]; b > 0; b = m->body_parentid[b]) {
+      if (b == shoulder[0] || b == shoulder[1]) {
+        w.arm_geom[g] = 1;
+        break;
+      }
+    }
+  }
+
+  // Both bounds come off the stance, with the robot upright and its joints
+  // where every run begins.
+  mjData* probe = w.probe.get();
+  mj_resetData(m, probe);
+  for (int i = 0; i < NUM_MOTOR; ++i) {
+    probe->qpos[w.qpos_adr[i]] = DEFAULT_ANGLES[i];
+  }
+  mj_kinematics(m, probe);
+
+  w.front_m = std::numeric_limits<double>::max();
+  for (int side = 0; side < 2; ++side) {
+    double lo[3];
+    double hi[3];
+    hand_box(w, side, lo, hi);
+    w.front_m = std::min(w.front_m, lo[0]);
+  }
+
+  const int head = require_id(m, mjOBJ_MESH, "head_link", "mesh");
+  w.head_m = std::numeric_limits<double>::max();
+  for (int g = 0; g < m->ngeom; ++g) {
+    if (m->geom_type[g] != mjGEOM_MESH || m->geom_dataid[g] != head) continue;
+    const int adr = m->mesh_vertadr[head];
+    const int verts = m->mesh_vertnum[head];
+    for (int v = 0; v < verts; ++v) {
+      const double local[3] = {
+          m->mesh_vert[3 * (adr + v) + 0],
+          m->mesh_vert[3 * (adr + v) + 1],
+          m->mesh_vert[3 * (adr + v) + 2]
+      };
+      double turned[3];
+      mju_mulMatVec3(turned, probe->geom_xmat + 9 * g, local);
+      double offset[3];
+      for (int k = 0; k < 3; ++k) {
+        offset[k] = turned[k] + probe->geom_xpos[3 * g + k] -
+                    probe->xpos[3 * w.torso + k];
+      }
+      double rel[3];
+      mju_mulMatTVec3(rel, probe->xmat + 9 * w.torso, offset);
+      w.head_m = std::min(w.head_m, rel[2]);
+    }
+    break;
+  }
+  if (w.head_m == std::numeric_limits<double>::max()) {
+    throw std::runtime_error("sim: the head mesh is on no geom to measure");
+  }
+  return w;
+}
+
+/**
+ * Take one step of the walk and return the arm pose it lands on.
+ *
+ * The draw is filtered against the robot as it stands this instant, not
+ * against the stance: a hand that would be clear of a still robot can be
+ * inside a thigh of a walking one, and it is the walking one the arms have
+ * to stay out of. What is checked is the target the arms are being pulled
+ * towards rather than where they have got to, which is the only thing this
+ * side of the loop knows.
+ *
+ * @param[in,out] w     the walk, advanced by one draw it accepts
+ * @param[in] live      the running world, for everything but the arms
+ * @returns `w.pose`, the stance with both arms written into it
+ * @exceptsafe basic
+ */
+const double* arm_walk_step(
+    ArmWalk& w,
+    const mjData* live
+) {
+  mjData* probe = w.probe.get();
+  std::copy(live->qpos, live->qpos + w.m->nq, probe->qpos);
+  for (int draw = 0; draw < ARM_DRAWS; ++draw) {
+    double candidate[ARM_DOF];
+    for (int i = 0; i < ARM_DOF; ++i) {
+      candidate[i] = std::clamp(
+          w.left[i] + ARM_STEP_RAD * between(w.rng, -1.0, 1.0),
+          w.lo[i],
+          w.hi[i]
+      );
+    }
+    for (int i = 0; i < ARM_DOF; ++i) {
+      probe->qpos[w.qpos_adr[ARM_LEFT_FIRST + i]] = candidate[i];
+      probe->qpos[w.qpos_adr[ARM_RIGHT_FIRST + i]] =
+          ARM_MIRROR[i] * candidate[i];
+    }
+    mj_kinematics(w.m, probe);
+    mj_collision(w.m, probe);
+    if (!arm_pose_ok(w)) continue;
+    for (int i = 0; i < ARM_DOF; ++i) {
+      w.left[i] = candidate[i];
+      w.pose[ARM_LEFT_FIRST + i] = candidate[i];
+      w.pose[ARM_RIGHT_FIRST + i] = ARM_MIRROR[i] * candidate[i];
+    }
+    break;
+  }
+  return w.pose;
 }
 
 /**
@@ -3097,6 +3485,7 @@ Report sim_run(
   Handles h = handles_make(m, d);
   reset_to_stance(h);
   CostMeter meter = meter_make();
+  ArmWalk arms = arm_walk_make(m, config.seed);
 
   const std::shared_ptr<Loop> loop = loop_make(policy, tour);
   loop->quiet = config.quiet;
@@ -3171,7 +3560,12 @@ Report sim_run(
       next_control += PERIOD_S;
       const RobotState state = state_read(h);
       const WorldPose world = world_read(h);
-      tick = loop_step(*loop, state, world, d->time);
+      // The arms only start wandering once the crane has let go: until then
+      // they are being ramped to the stance with every other joint, and a
+      // walk running under the ramp would only be a jump at the release.
+      const double* arm_pose =
+          loop->phase == Phase::CONTROL ? arm_walk_step(arms, d) : arms.pose;
+      tick = loop_step(*loop, state, world, d->time, arm_pose);
       command = tick.command;
       if (!released && tick.phase != Phase::INIT) {
         released = true;
@@ -3311,8 +3705,9 @@ void usage() {
          "run back.\n"
          "                    WITHOUT this flag there is no window and no "
          "sleeping\n"
-         "  --seed N          seeds the tour and the punch campaign "
-         "(default "
+         "  --seed N          seeds the tour, the punch campaign and the "
+         "arms\n"
+         "                    (default "
       << DEFAULT_SEED
       << ")\n"
          "  --record DIR      write DIR/<policy>.mp4, one frame per 0.02 s "
@@ -4353,6 +4748,36 @@ const std::vector<float>& engine_run_single(
 
 #include "policies/robomimic/policy.cpp"
 
+#include "policies/decoupled_wbc/policy.cpp"
+
+#include "policies/handoff/policy.cpp"
+
+#include "policies/sonic/policy.cpp"
+
+#include "policies/wbc_agile/policy.cpp"
+
+#include "policies/grove/policy.cpp"
+
+#include "policies/dm_agile/policy.cpp"
+
+#include "policies/dm_march/policy.cpp"
+
+#include "policies/g1_gym/policy.cpp"
+
+#include "policies/legged_rl_lab/policy.cpp"
+
+#include "policies/nanog1/policy.cpp"
+
+#include "policies/schoi/policy.cpp"
+
+#include "policies/stepdown/policy.cpp"
+
+#include "policies/wcompton/policy.cpp"
+
+#include "policies/wty_cpp/policy.cpp"
+
+#include "policies/zealot/policy.cpp"
+
 /**
  * Every policy this binary was built with.
  *
@@ -4366,20 +4791,16 @@ const std::vector<float>& engine_run_single(
  * `make_policy`.
  */
 const char* const POLICY_NAMES[] = {
-    "asap",
-    "clobot",
-    "clobot_with_arms",
-    "falcon",
-    "gr00t_wbc",
-    "holosoma",
-    "homie",
-    "openwbt",
-    "rl_lab",
-    "rl_mjlab",
-    "run_residual",
-    "amo",
-    "rl_gym",
-    "robomimic"
+    "asap",     "clobot",        "clobot_with_arms",
+    "falcon",   "gr00t_wbc",     "holosoma",
+    "homie",    "openwbt",       "rl_lab",
+    "rl_mjlab", "run_residual",  "amo",
+    "rl_gym",   "robomimic",     "decoupled_wbc",
+    "handoff",  "sonic",         "wbc_agile",
+    "grove",    "dm_agile",      "dm_march",
+    "g1_gym",   "legged_rl_lab", "nanog1",
+    "schoi",    "stepdown",      "wcompton",
+    "wty_cpp",  "zealot"
 };
 
 /**
@@ -4425,6 +4846,23 @@ std::shared_ptr<ModelPolicy> make_policy(const char* name) {
   if (wanted == "amo") return std::make_shared<amo::Policy>();
   if (wanted == "rl_gym") return std::make_shared<rl_gym::Policy>();
   if (wanted == "robomimic") return std::make_shared<robomimic::Policy>();
+  if (wanted == "decoupled_wbc")
+    return std::make_shared<decoupled_wbc::Policy>();
+  if (wanted == "handoff") return std::make_shared<handoff::Policy>();
+  if (wanted == "sonic") return std::make_shared<sonic::Policy>();
+  if (wanted == "wbc_agile") return std::make_shared<wbc_agile::Policy>();
+  if (wanted == "grove") return std::make_shared<grove::Policy>();
+  if (wanted == "dm_agile") return std::make_shared<dm_agile::Policy>();
+  if (wanted == "dm_march") return std::make_shared<dm_march::Policy>();
+  if (wanted == "g1_gym") return std::make_shared<g1_gym::Policy>();
+  if (wanted == "legged_rl_lab")
+    return std::make_shared<legged_rl_lab::Policy>();
+  if (wanted == "nanog1") return std::make_shared<nanog1::Policy>();
+  if (wanted == "schoi") return std::make_shared<schoi::Policy>();
+  if (wanted == "stepdown") return std::make_shared<stepdown::Policy>();
+  if (wanted == "wcompton") return std::make_shared<wcompton::Policy>();
+  if (wanted == "wty_cpp") return std::make_shared<wty_cpp::Policy>();
+  if (wanted == "zealot") return std::make_shared<zealot::Policy>();
 
   std::string msg = "unknown --policy '" + wanted + "'. Valid names:";
   bool first = true;

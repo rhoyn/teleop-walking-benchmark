@@ -16,3 +16,9 @@ policies/run_residual/model_residual.onnx
 *.pkl
 *.safetensors
 *.bin
+
+# sonic ships 825 MB of weights, over GitHub's 100 MB per-file limit
+policies/sonic/*.onnx
+
+# wcompton declares no licence upstream; NOTICE says fetch, do not commit
+policies/wcompton/model.onnx

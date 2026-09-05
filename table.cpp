@@ -48,13 +48,19 @@ inline constexpr std::array<const char*, 5> GROUPS =
     {"legs_upper", "legs_lower", "waist", "arms_upper", "arms_lower"};
 
 /**
- * Smallest number of runs that may stand behind a printed mean.
+ * Smallest share of a policy's runs that may stand behind a printed mean.
  *
  * A policy that rarely reaches a waypoint has no honest average there, and
  * printing one invites a comparison the sample cannot support. Cells under
  * the floor are written as a dash instead.
+ *
+ * Expressed as a fraction of the runs that policy actually had, so the rule
+ * holds whatever the campaign size. At the 10,000-seed campaign this is 2000
+ * completed tours, which is the fixed floor it replaces: the published table
+ * is unchanged by the switch. A hundred-seed entry must clear twenty.
  */
-inline constexpr int FLOOR = 2000;
+inline constexpr int FLOOR_NUMERATOR = 1;
+inline constexpr int FLOOR_DENOMINATOR = 5;
 
 /**
  * The one row that is reported but not ranked.
@@ -215,6 +221,8 @@ std::string fixed(
  *
  * @param[in] sum     the running total
  * @param[in] count   how many runs contributed to it
+ * @param[in] runs    how many runs that policy had in all, which sets the
+ *                    floor `count` must clear
  * @param[in] places  decimals to keep; the cost columns are whole units,
  *                    since a tenth of a joule or of a krad/s^2 over a
  *                    whole tour is noise
@@ -225,10 +233,11 @@ std::string fixed(
 std::string cell(
     double sum,
     long count,
+    long runs,
     int places,
     const std::string& unit
 ) {
-  if (count < FLOOR) return "-";
+  if (count * FLOOR_DENOMINATOR < runs * FLOOR_NUMERATOR) return "-";
   return fixed(sum / static_cast<double>(count), places) + unit;
 }
 
@@ -407,8 +416,8 @@ std::string row(
       fixed(t.survival / runs, 1) + " s",
       t.targets > 0 ? fixed(t.pos / weight, 0) + " cm" : "-",
       t.targets > 0 ? fixed(t.yaw / weight, 0) + "°" : "-",
-      cell(t.tour_e, t.finished, 0, " J"),
-      cell(t.tour_v, t.finished, 0, "")
+      cell(t.tour_e, t.finished, t.runs, 0, " J"),
+      cell(t.tour_v, t.finished, t.runs, 0, "")
   };
 
   const bool unranked = name == UNRANKED;

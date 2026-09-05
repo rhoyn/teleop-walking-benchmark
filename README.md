@@ -2,10 +2,11 @@
 
 Blog post: [Stable walk](https://rhoyn.com/stable-walk?utm_source=github)
 
-Thirteen open-source Unitree G1 walking policies ported to one C++ interface and
-scored against the same waypoint tour in MuJoCo. Twelve of the sixteen
-checkpoints are committed under `policies/`; `./download_weights.sh` pulls the
-other four.
+Twenty-eight open-source Unitree G1 walking policies ported to one C++ interface
+and scored against the same waypoint tour in MuJoCo. Twenty-nine of the
+thirty-three checkpoints are committed under `policies/`; `./download_weights.sh`
+pulls three more and `./export_onnx.py` converts the last from a fetched
+checkpoint.
 
 The difficulty is deliberate. A benchmark every candidate completes ranks
 nothing — it separates no one, it only shows the task was too easy. This one is
@@ -16,12 +17,25 @@ of walking — a policy is judged on whether it can absorb a hit it never saw
 coming and get back on the tour, not only on how neatly it tracks a target
 while nothing is going wrong.
 
-**The arms are not the policy's to use.** This is a benchmark for a walking
-policy you sit *underneath* while you drive the upper body yourself, so every
-candidate is scored on the same 15 lower-body joints — twelve in the legs, three
-in the waist — and the 14 arm joints are held at `DEFAULT_ANGLES` on shared
-gains for the whole tour. Nothing a policy does can move them, and nothing it
-does can borrow them.
+**The arms are not the policy's to use, and they will not hold still.** This is
+a benchmark for a walking policy you sit *underneath* while you drive the upper
+body yourself, so every candidate is scored on the same 15 lower-body joints —
+twelve in the legs, three in the waist — while the 14 arm joints are driven on
+shared gains by the tour itself. Nothing a policy does can move them, and
+nothing it does can borrow them.
+
+What the tour drives them with is a random walk. Every control step adds a
+uniform draw to the arm targets it already holds, so the arms never settle: no
+trajectory, no task, just a load that keeps moving. The two arms are posed as
+mirror images of each other, which keeps the disturbance fore-and-aft rather
+than a permanent list to one side, and a drawn pose is kept only if it leaves
+both hands in front of the robot, below its head, inside the joint limits and
+through neither the robot nor the floor. A pose that fails any of those is
+thrown away and the draw taken again. Everything inside that is fair game: a
+policy cannot learn where the hands will be, only that they are somewhere ahead
+of the chest and moving. The walk is drawn from the run's seed like the
+waypoints and the punches, so a seed still names one whole task and a repeated
+seed still reproduces bit for bit.
 
 That is harder than the alternative, and deliberately so. A humanoid's arms are
 a real part of how it stays upright: swing them and you can shed momentum a fall
@@ -29,11 +43,12 @@ would otherwise keep. Take them away and a policy has to hold its balance on its
 legs alone. But an operator teleoperating the robot is *using* those arms to do
 a task, and the walking policy underneath cannot make plans that depend on them
 — a controller that needs to windmill to stay standing is a controller that
-falls the moment its operator reaches for a door handle. Holding the arms still
-is not a handicap the benchmark imposes for difficulty's sake; it is the
-condition the policy will actually run in. That it also makes the task harder is
-the point rather than the cost. `clobot` is the extreme case and is discussed
-below.
+falls the moment its operator reaches for a door handle. It is also not enough
+to take the arms away and leave them parked: an arm being worked is a mass
+moving around above the hips, and a policy that only ever met a still one has
+not met the condition it will actually run in. That the moving arms also make
+the task harder is the point rather than the cost. `clobot` is the extreme case
+and is discussed below.
 
 ![The field at twenty-seven seconds in: thirteen tiles, one policy each and named beside it, most of the humanoids already down with the orange punch cylinder still resting where it hit them, a few still on their feet and tracking the next waypoint](assets/preview.jpg)
 
@@ -144,12 +159,25 @@ The clip carries the policy name on the floor and nothing else; a punch draws a
 red arrow at the contact point, sized by the force and held for 500 ms after the
 hit.
 
-## The 10,000-seed campaign
+## The 50-seed campaign
 
-Seeds 0-9999, every policy over every seed: **140,000 runs**, 1568 robot-hours
-of simulated walking, fifteen tours in flight on an RTX 4090 / Ryzen 7 7800X3D.
-No run errored and no run was interrupted, so every row in `results/result.csv`
-is a measurement.
+Seeds 0-49, every policy over every seed: **1,450 runs**, 9.8 hours of simulated
+walking, eight tours in flight on an RTX 4090 / Ryzen 7 7800X3D. No run errored
+and no run was interrupted, so every row in `results/result.csv` is a
+measurement. Every policy runs the same seed range into the same file, so the
+whole table is one campaign.
+
+**Fifty seeds is a small sample, and the table has to be read as one.** A 95%
+Wilson interval on a completion figure in the middle of the field is about
+twenty-five points wide — `decoupled_wbc`'s 74.0% spans 60.4-84.1 and
+`gr00t_wbc`'s 64.0% spans 50.1-75.9 — so adjacent rows are not separated by
+this campaign. The column that is solid is the difference between a policy that
+finishes tours and one that finishes none.
+
+Every number below was measured before the arms were set walking, with the 14
+arm joints parked at `DEFAULT_ANGLES` for the whole tour. The campaign has not
+been re-run since, so read the table as the ranking of the parked-arm tour; the
+moving arms are a harder task and the rows will move.
 
 Each seed draws its own 12-target tour and its own punch campaign, so a seed is
 a whole task, not a repetition — the runs are deterministic and a repeated seed
@@ -158,24 +186,41 @@ reproduces bit-identically.
 Every policy is handed the same stance. The crane ramps the robot to the shared
 `DEFAULT_ANGLES` pose over three seconds and then lets go, rather than to a pose
 each checkpoint chose for itself, so what is measured is how well a policy takes
-over from a stance it was not necessarily trained around.
+over from a stance it was not necessarily trained around. The arms start
+walking at the release and not before, from that same stance, so no candidate
+is handed its robot mid-gesture.
 
 | `--policy` | completed | survived | pos err | yaw err | tour<br>battery<br>energy<br>consumed | tour<br>vibrations |
 |---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | **78.9%** | 56.7 s | 10 cm | 3° | 4947 J | 6879 |
-| `homie` | **71.0%** | 55.6 s | 18 cm | 34° | 6530 J | 8654 |
-| `amo` | **69.9%** | 54.5 s | 23 cm | 12° | 5420 J | 8402 |
-| `robomimic` | **65.2%** | 54.9 s | 11 cm | 4° | 4438 J | 6577 |
-| `asap` | **53.5%** | 52.5 s | 13 cm | 10° | 4813 J | 6277 |
-| `rl_mjlab` | **45.9%** | 51.0 s | 15 cm | 3° | 5710 J | 6788 |
-| `holosoma` | **41.7%** | 50.1 s | 18 cm | 3° | 4874 J | 4932 |
-| `run_residual` | **14.4%** | 39.2 s | 432 cm | 3° | - | - |
-| `rl_lab` | **7.3%** | 36.3 s | 14 cm | 65° | - | - |
-| `falcon` | **2.3%** | 28.3 s | 34 cm | 4° | - | - |
-| `rl_gym` | **1.1%** | 23.9 s | 58 cm | 6° | - | - |
-| `openwbt` | **1.0%** | 26.1 s | 10 cm | 36° | - | - |
-| `clobot` | **0.0%** | 2.2 s | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~34 cm~~ | ~~5°~~ | - | - |
+| `decoupled_wbc` | **74.0%** | 54.8 s | 8 cm | 4° | 5038 J | 10480 |
+| `gr00t_wbc` | **64.0%** | 53.4 s | 11 cm | 3° | 5636 J | 11251 |
+| `homie` | **64.0%** | 54.5 s | 17 cm | 35° | 6671 J | 12510 |
+| `amo` | **62.0%** | 52.7 s | 27 cm | 14° | 6678 J | 12759 |
+| `grove` | **58.0%** | 53.5 s | 17 cm | 3° | 8288 J | 12254 |
+| `wbc_agile` | **52.0%** | 51.4 s | 14 cm | 4° | 5399 J | 9266 |
+| `sonic` | **50.0%** | 50.2 s | 14 cm | 5° | 7143 J | 12621 |
+| `asap` | **28.0%** | 41.4 s | 81 cm | 27° | 6523 J | 10813 |
+| `wty_cpp` | **18.0%** | 37.9 s | 14 cm | 7° | - | - |
+| `robomimic` | **16.0%** | 39.2 s | 100 cm | 4° | - | - |
+| `run_residual` | **10.0%** | 36.9 s | 545 cm | 4° | - | - |
+| `falcon` | **6.0%** | 28.7 s | 33 cm | 6° | - | - |
+| `rl_lab` | **2.0%** | 21.5 s | 16 cm | 68° | - | - |
+| `clobot` | **0.0%** | 1.9 s | - | - | - | - |
+| `dm_agile` | **0.0%** | 3.4 s | 67 cm | 93° | - | - |
+| `dm_march` | **0.0%** | 5.5 s | 166 cm | 99° | - | - |
+| `g1_gym` | **0.0%** | 2.5 s | 72 cm | 22° | - | - |
+| `handoff` | **0.0%** | 18.9 s | 86 cm | 5° | - | - |
+| `holosoma` | **0.0%** | 5.4 s | 49 cm | 19° | - | - |
+| `legged_rl_lab` | **0.0%** | 3.8 s | 130 cm | 33° | - | - |
+| `nanog1` | **0.0%** | 2.1 s | 113 cm | 3° | - | - |
+| `openwbt` | **0.0%** | 22.1 s | 38 cm | 40° | - | - |
+| `rl_gym` | **0.0%** | 15.0 s | 48 cm | 6° | - | - |
+| `rl_mjlab` | **0.0%** | 5.6 s | 154 cm | 20° | - | - |
+| `schoi` | **0.0%** | 3.1 s | 187 cm | 61° | - | - |
+| `stepdown` | **0.0%** | 1.5 s | - | - | - | - |
+| `wcompton` | **0.0%** | 1.8 s | - | - | - | - |
+| `zealot` | **0.0%** | 6.1 s | 285 cm | 97° | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**6.0%**~~ | ~~33.0 s~~ | ~~35 cm~~ | ~~5°~~ | - | - |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -183,10 +228,15 @@ row drives — a harness configuration rather than a fourteenth policy. It sits
 under `clobot` so the two can be read against each other, and not against the
 rows above them.
 
-**The bottom four complete under 3% of their tours** — `falcon`, `rl_gym`,
-`openwbt` and `clobot`, which finishes none — so read their error columns with
-care. Those figures rest on whichever fragments of a tour the policy reached
-before falling, which is not the same measurement as the rows above them.
+**Fifteen of the twenty-eight complete no tour at all**, and a further five
+finish under a fifth of theirs, so read the error columns below the top eight
+with care. Those figures rest on whichever fragments of a tour the policy
+reached before falling, which is not the same measurement as the rows above
+them: `nanog1`'s 3° is a heading it held for two seconds.
+
+Only eight policies clear the observation floor on the cost columns and get a
+figure there at all. The rest are blank, which is the floor doing its job
+rather than data missing.
 
 Survival is sim seconds to the fall **measured from the crane's release**, not
 from the start of the simulation: the three seconds the crane spends ramping the
@@ -204,82 +254,83 @@ candidates rather than penalising them. Step timings are deliberately absent:
 the sweeps shared the machine fifteen at a time, which inflates them by an order
 of magnitude. Measure those solo.
 
-**`gr00t_wbc` now wins every column.** Fewest falls, longest survival, lowest
-position error and lowest yaw error — the first time one policy has taken all
-four. It held the first three on the old tour but lost position error to
-`openwbt`; at ten thousand seeds it takes that too, 9.5 cm against 10.4 cm, and
-this time on a row that finishes four fifths of its tours rather than none. Both
-of those wins are narrower than a whole unit, so the table rounds them away —
-`openwbt` shares its 10 cm and three policies share its 3° — and only
-`results/result.csv` shows the margin.
-It clears second place by eight points of completion, 78.9% against `homie`'s
-71.0%. First place is not close.
+**`decoupled_wbc` leads the field, but fifty seeds cannot crown it.** It takes
+completion at 74.0%, survival at 54.8 s and position error at 8 cm, and it is
+the only policy to lead all three. Its interval nevertheless runs 60.4-84.1 and
+overlaps every one of the six rows beneath it, so what this campaign supports is
+that it belongs in the leading group, not that it is first. `gr00t_wbc` and
+`homie` tie exactly at 64.0%, 32 completed tours each.
 
-**Ten thousand seeds leave almost nothing tied.** No 95% Wilson interval in the
-completion column is wider than two points, so every gap in it is real except
-one: `homie` and `amo` finish 7104 and 6987 tours, 70.1-71.9% against
-69.0-70.8%, close enough that their intervals still touch. Everything else
-separates cleanly — `robomimic` is fourth, `asap` fifth, and the order below
-them holds. The sample size is past the point of being the limiting factor: what
-separates these policies now is the tour, not the statistics.
+**Fifty seeds leave almost everything tied.** No adjacent pair in the top eight
+is separated by its Wilson intervals. Seven policies sit between 50% and 74% —
+`decoupled_wbc`, `gr00t_wbc`, `homie`, `amo`, `grove`, `wbc_agile`, `sonic` —
+and 24 to 26 points of interval is wider than the whole spread between them. The
+gap the sample does support is the one below `asap`: the eight policies that
+finish tours against the twenty that mostly or never do.
 
-**`openwbt` is accurate and still cannot finish**: second-best mean position
-error in the field and 104 completions in ten thousand tries. Its 36° yaw
-error is where it goes — capped at its published 0.3 m/s, it cannot hold heading
-on the harder draws.
+**Moving arms is the discriminator.** The tour now walks the arms and hands
+under every policy, and it is a far harsher disturbance than the punches for
+anything that was holding them still to stay upright. `rl_mjlab` and `holosoma`
+finished eleven of twelve targets on the previous tour and now complete no tour
+at all; `handoff` and `robomimic` lose most of theirs. The policies at the top
+are the ones whose balance survives an upper body they do not control.
 
 **`clobot` fails on every seed, but no longer identically.** Not one scored
-target in ten thousand tours, and a mean survival of 2.2 s against a worst of
-0.7 s. On the old tour every run was the same 5.3 s to three significant
-figures; now the first punch lands a tenth of a second after the release and
-spreads the falls across 27 distinct times between 0.7 s and 3.3 s. The
-punch changes when it goes over, not whether.
+target in fifty tours, and a mean survival of 1.9 s. On the old tour every run
+was the same 5.3 s to three significant figures; now the first punch lands a
+tenth of a second after the release and the arms move under it, spreading the
+falls across 21 distinct times between 1.1 s and 3.3 s. The disturbances change
+when it goes over, not whether.
 
 That figure is the tour's rule rather than the gait. `clobot` is the only
 checkpoint here trained as a whole-body policy whose balance depends on its own
 arm motion — its deploy config carries a per-joint action scale, `kp` and `kd`
-for all 29 joints, wrists included. This tour holds the arms for every
-candidate: whatever a policy leaves unowned sits at `DEFAULT_ANGLES` on the
-shared gains, and `clobot` is driven on the same 15 lower-body joints as the
-rest of the field. Take the upper body away and it topples in five seconds,
-every time. Parking the arms at its own nominal pose rather than
-`DEFAULT_ANGLES` recovers none of it — 5.9 s over 32 seeds — so what it wants is
-the arm swing, not the arm pose.
+for all 29 joints, wrists included. This tour takes the arms away from every
+candidate: whatever a policy leaves unowned is driven by the tour on shared
+gains, and `clobot` is scored on the same 15 lower-body joints as the rest of
+the field. Take the upper body away and it topples in five seconds,
+every time. Parking the arms at its own nominal pose instead recovers none of
+it — 5.9 s over 32 seeds — so what it wants is the arm swing, not the arm
+pose.
 
 In fairness to the checkpoint, the same weights are also wired up as
 `--policy clobot_with_arms`, owning all 29 joints, and run over the same seeds
-0-9999. Giving the policy its arms back is worth 855 tours against none, which
-would place it above `rl_lab` rather than at the bottom of the field.
+0-49. Giving the policy its arms back is worth 3 completed tours against none
+and a mean survival of 33.0 s against 1.9 s — which now means owning the arms
+the tour would otherwise be walking for it.
 
 **Low error does not mean good.** `run_residual` cannot strafe, reverse or turn
 in place — its command floor forces it forward at 0.5 m/s whenever it is off
-target, so it can only approach on an arc — and 432 cm is a policy that cannot
-do this task rather than a bad gait. `openwbt`'s near-first error is earned on
-the fraction of each tour it survived. Read the completion column first.
+target, so it can only approach on an arc — and 545 cm is a policy that cannot
+do this task rather than a bad gait. `rl_lab`'s 16 cm and `wty_cpp`'s 14 cm are
+earned on the fraction of each tour they survived. Read the completion column
+first.
 
-**Nothing completes reliably.** The best policy in the field fails a fifth of
-its tours, and when the top four do fall they fall with about fifteen seconds
-left of a 60 s tour, where the punch ramp is closing on its 600 N ceiling.
-Surviving the end of the tour is the discriminator, not tracking error.
+**Nothing completes reliably.** The best policy in the field fails a quarter of
+its tours, twenty of the twenty-eight finish under a fifth of theirs, and
+fifteen finish none. Surviving to the end of the tour is the discriminator, not
+tracking error.
 
 **The opening punch is its own filter.** It lands a tenth of a second after the
-crane lets go, before any policy has taken a step, and it ends 4.2% of `rl_gym`'s
-runs and 2.8% of `openwbt`'s inside the first waypoint. The top four lose almost
-nothing there — two runs in ten thousand for `robomimic` and `asap` — so it
-separates the policies that cannot take a hit from a standing start rather than
-punishing the field at random.
+crane lets go, before any policy has taken a step, so it separates the policies
+that cannot take a hit from a standing start rather than punishing the field at
+random. At fifty seeds the per-policy share of runs it ends is too small a count
+to quote; the ten-thousand-seed campaign put it at 4.2% of `rl_gym`'s runs and
+2.8% of `openwbt`'s, against almost none for the leaders.
 
 The runs behind this table are in [results/result.csv](results/result.csv), one
-row per run, with `clobot_with_arms` in that file too — ten thousand rows that
-no line of the table above draws on. Every run also carries what each waypoint of its
-tour cost, joint group by joint group, in the `s<i>_` columns described above.
+row per run, `clobot_with_arms` included — fifty rows that no ranked line of the
+table draws on. Every run also carries what each waypoint of its tour cost,
+joint group by joint group, in the `s<i>_` columns described above.
 
 The table itself is computed by [table.cpp](table.cpp), which links nothing and
-reads only that file. `make table && ./build/table` reprints it, so the numbers
-above can be checked against the runs rather than trusted:
+reads one campaign file at a time. `make table && ./build/table` reprints the
+ranked rows, so the numbers above can be checked against the runs rather than
+trusted:
 
 ```sh
-make table && ./build/table | diff - <(sed -n '/^| `--policy`/,/^$/p' README.md)
+make table && ./build/table \
+  | diff - <(sed -n '/^| `--policy`/,/^$/p' README.md)
 ```
 
 ### What the tour costs
@@ -288,40 +339,47 @@ The last two columns come from the per-waypoint `s<i>_` columns, summed across
 all five joint groups and over all twelve waypoints. They are averaged over
 completed runs only — those are the only runs in which all twelve waypoints ran
 their clock, and so the only ones whose totals mean the same thing — and are
-blank unless at least 2000 runs stand behind the average. Seven policies clear
-that; the rest finish fewer than two thousand of their ten thousand tours, and
-`clobot` finishes no waypoint at all. They are survivor figures by construction:
-they say what a tour cost the runs that completed it, not what it costs on
-average.
+blank unless at least a fifth of that policy's runs stand behind the average.
+Eight policies clear that; the rest finish fewer than ten of their fifty tours,
+and `clobot` finishes no waypoint at all. The floor is a share rather than a
+count so that it means the same thing whatever the campaign size — at ten
+thousand seeds it is the 2000 completed tours the previous campaign demanded.
+These are survivor figures by construction: they say what a tour cost the runs
+that completed it, not what it costs on average.
 
 Every cost and error column is reported in whole units, which is as much
-precision as a mean over ten thousand runs is worth reading. Energy itself is
+precision as a mean over fifty runs is worth reading. Energy itself is
 mechanical work at the joints, `Σ|τ·ω|·dt`, which is a floor on what a battery
 would actually deliver rather than the draw itself: it counts no drivetrain loss
 and no current spent holding a limb still against gravity. Two policies an equal
 distance apart on this column would be further apart on a real robot, not
 closer.
 
-**What the columns show is the price of a finish.** `homie` completes 71.0% to
-`gr00t_wbc`'s 78.9% but pays 6530 J and 8654 for its tours against 4947 J and
-6879 — a third more energy and a quarter more shake for a worse result.
-`gr00t_wbc` is neither the cheapest nor the smoothest: `robomimic` finishes a
-tour on less energy than anyone at 4438 J, and `holosoma` shakes least at 4932
-against `gr00t_wbc`'s 6879 while completing 41.7%. The winner is simply the one
-that converts what it spends into staying upright.
+**What the columns show is the price of a finish.** `homie` completes 64.0% to
+`decoupled_wbc`'s 74.0% but pays 6671 J and 12510 for its tours against 5038 J
+and 10480 — a third more energy and a fifth more shake for a worse result. This
+time the leader is also the cheapest of the eight rows that carry figures, which
+the previous campaign's winner was not; `wbc_agile` is the smoothest at 9266
+against `decoupled_wbc`'s 10480 while completing 52.0%. The winner is simply the
+one that converts what it spends into staying upright.
+
+Every figure in these two columns is roughly half again what it was before the
+tour began walking the arms — the arms are being driven through a random walk
+now, and that work is counted.
 
 **The rows with no figures are where the cost is most telling**, and the
 per-waypoint columns in `results/result.csv` carry it even though this table
-cannot. Over its opening waypoint `rl_lab` spends less than any policy in the
-field, 216 J, and completes 7.3%. `rl_gym` spends 1065 J there against
-`gr00t_wbc`'s 279 and shakes 3079 against 450 — 3.8× the energy and 6.8× the
-vibration — and completes 1.1%. It is not walking so much as vibrating along the
-tour. Neither cheap nor expensive predicts standing up; only the completion
-column does.
+cannot. Over its opening waypoint `nanog1` spends less than any policy in the
+field, 194 J, and completes none of its tours. `rl_gym` spends 1108 J there
+against `gr00t_wbc`'s 309 and shakes 3270 against 809 — 3.6× the energy and 4.0×
+the vibration — and also completes none. It is not walking so much as vibrating
+along the tour. `schoi` is the extreme at 16155 J in that one waypoint, two
+orders of magnitude above the cheapest, and falls at 3.1 s. Neither cheap nor
+expensive predicts standing up; only the completion column does.
 
 ## Inference
 
-Every candidate runs on the GPU, all thirteen as ONNX compiled to TensorRT
+Every candidate runs on the GPU, all twenty-eight as ONNX compiled to TensorRT
 plans, cached under `build/trt/` and keyed on the model's CRC32 plus the
 TensorRT and CUDA versions, the GPU and the precision — a first run builds,
 later runs load. Nothing links libtorch.
@@ -346,16 +404,19 @@ calls against 3,000 policy steps, and inference is under 3% of a run.
 
 ## Policy weights
 
-Sixteen checkpoints across the thirteen policies. Twelve are committed beside
-the policy that loads them; `./download_weights.sh` pulls the other four from
-their upstream repository and checks each file's sha256 as it lands.
+Thirty-three checkpoints across the twenty-eight policies. Twenty-nine are
+committed beside the policy that loads them; `./download_weights.sh` pulls seven
+files from their upstream repositories and checks each file's sha256 as it
+lands.
 
 A checkpoint's licence travels to anything derived from it, so the ONNX that
-`./export_onnx.py` writes is shipped exactly where its source is. `amo` and
-`rl_gym` are committed, so their conversions are committed too; `robomimic`'s
-checkpoint is fetched rather than committed, so its conversion is generated
-rather than committed. Converting a file to another format does not make it
-redistributable.
+`./export_onnx.py` writes is shipped only where its source's terms allow.
+`amo`'s and `rl_gym`'s conversions are committed because those checkpoints are
+redistributable; the checkpoints themselves are fetched rather than committed,
+which is a repository-size choice about PyTorch blobs and not a licence one.
+`robomimic`'s checkpoint declares no licence at all, so its conversion is
+generated on your machine rather than committed. Converting a file to another
+format does not make it redistributable.
 
 Every checkpoint is third-party, as are the Unitree G1 description under
 `assets/` and the bundled font. Their provenance and terms — which one is
