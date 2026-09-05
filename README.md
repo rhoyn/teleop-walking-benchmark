@@ -95,18 +95,19 @@ computed from and nothing else. The error columns are poolable across runs
 because `targets` travels beside them as the weight, and a run stopped part way
 is recorded as `interrupted` and is not a measurement.
 
-What each leg of the tour cost follows as `s<i>_` columns, one block of ten per
-target clock, twelve blocks in all. A leg is one target's clock: `s5_` is the
-leg walked while target 5 was being asked for.
+What each waypoint of the tour cost follows as `s<i>_` columns, one block of ten per
+target clock, twelve blocks in all. A waypoint block spans one target's clock:
+`s5_` covers the stretch walked while target 5 was being asked for.
 
 - **`s<i>_e_<group>_j`** is absolute mechanical work, the sum of `|τ·ω|·dt` over
-  every 1 ms physics step of that leg, in joules. The absolute value is what
+  every 1 ms physics step of that waypoint, in joules. The absolute value is what
   makes it an actuator cost rather than a physics one — these motors burn
   current holding a limb against gravity whichever way it is moving, and a
-  signed integral would let a leg swinging down pay back the leg that lifted it.
+  signed integral would let a limb swinging down pay back the lift that raised
+  it.
 - **`s<i>_v_<group>_krads2`** is how much the group shook: the total variation
   of each joint's angular acceleration, the sum of `|α(t) − α(t−dt)|` over the
-  leg, added across the group, in thousands of rad/s².
+  waypoint, added across the group, in thousands of rad/s².
 
 Both are summed at the 1 ms physics step rather than sampled at the 50 Hz
 control rate, because a policy that buzzes its ankles at 200 Hz is invisible to
@@ -127,11 +128,11 @@ are light, fast and where a policy's chatter shows up first:
 | `arms_upper` | shoulder pitch/roll/yaw, elbow — both sides | 8 |
 | `arms_lower` | wrist roll/pitch/yaw — both sides | 6 |
 
-A run that fell leaves the legs it never reached empty, and **nothing marks
-which legs ran their full clock because nothing needs to.** Legs `0` to
+A run that fell leaves the waypoints it never reached empty, and **nothing marks
+which waypoints ran their full clock because nothing needs to.** Waypoints `0` to
 `targets - 1` each had their whole five seconds; a block present at index
-`targets` is the leg the run died in, running from `5 × targets` seconds to
-`survival_s`. Both quantities are sums over the leg rather than rates, so that
+`targets` is the waypoint the run died in, running from `5 × targets` seconds to
+`survival_s`. Both quantities are sums over the waypoint rather than rates, so that
 last partial block covers less than a target clock and should be dropped before
 pooling.
 
@@ -157,22 +158,22 @@ Every policy is handed the same stance. The crane ramps the robot to the shared
 each checkpoint chose for itself, so what is measured is how well a policy takes
 over from a stance it was not necessarily trained around.
 
-| `--policy` | completed | survived | pos err | yaw err |
-|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | **78.9%** | 56.7 s | 9.5 cm | 2.9° |
-| `homie` | **71.0%** | 55.6 s | 17.9 cm | 34.5° |
-| `amo` | **69.9%** | 54.5 s | 23.0 cm | 12.1° |
-| `robomimic` | **65.2%** | 54.9 s | 11.1 cm | 3.6° |
-| `asap` | **53.5%** | 52.5 s | 13.2 cm | 9.9° |
-| `rl_mjlab` | **45.9%** | 51.0 s | 14.7 cm | 3.4° |
-| `holosoma` | **41.7%** | 50.1 s | 18.1 cm | 3.1° |
-| `run_residual` | **14.4%** | 39.2 s | 432.3 cm | 3.2° |
-| `rl_lab` | **7.3%** | 36.3 s | 13.7 cm | 65.5° |
-| `falcon` | **2.3%** | 28.3 s | 33.6 cm | 4.1° |
-| `rl_gym` | **1.1%** | 23.9 s | 57.9 cm | 6.2° |
-| `openwbt` | **1.0%** | 26.1 s | 10.4 cm | 35.9° |
-| `clobot` | **0.0%** | 2.2 s | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~33.8 cm~~ | ~~5.0°~~ |
+| `--policy` | completed | survived | pos err | yaw err | first waypoint battery energy consumed | tour battery energy consumed | first waypoint vibrations | tour vibrations |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| `gr00t_wbc` | **78.9%** | 56.7 s | 9.5 cm | 2.9° | 279.1 J | 4947.5 J | 449.9 | 6879.2 |
+| `homie` | **71.0%** | 55.6 s | 17.9 cm | 34.5° | 379.9 J | 6530.0 J | 591.1 | 8654.3 |
+| `amo` | **69.9%** | 54.5 s | 23.0 cm | 12.1° | 330.1 J | 5419.7 J | 622.5 | 8402.0 |
+| `robomimic` | **65.2%** | 54.9 s | 11.1 cm | 3.6° | 237.2 J | 4438.4 J | 431.4 | 6577.5 |
+| `asap` | **53.5%** | 52.5 s | 13.2 cm | 9.9° | 265.2 J | 4812.8 J | 425.0 | 6277.0 |
+| `rl_mjlab` | **45.9%** | 51.0 s | 14.7 cm | 3.4° | 309.4 J | 5709.9 J | 440.1 | 6787.6 |
+| `holosoma` | **41.7%** | 50.1 s | 18.1 cm | 3.1° | 278.5 J | 4874.0 J | 274.0 | 4932.1 |
+| `run_residual` | **14.4%** | 39.2 s | 432.3 cm | 3.2° | 389.8 J | - | 493.6 | - |
+| `rl_lab` | **7.3%** | 36.3 s | 13.7 cm | 65.5° | 216.5 J | - | 362.0 | - |
+| `falcon` | **2.3%** | 28.3 s | 33.6 cm | 4.1° | 294.9 J | - | 440.1 | - |
+| `rl_gym` | **1.1%** | 23.9 s | 57.9 cm | 6.2° | 1065.1 J | - | 3078.6 | - |
+| `openwbt` | **1.0%** | 26.1 s | 10.4 cm | 35.9° | 297.3 J | - | 844.6 | - |
+| `clobot` | **0.0%** | 2.2 s | - | - | - | - | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~33.8 cm~~ | ~~5.0°~~ | ~~304.3 J~~ | - | ~~359.1~~ | - |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -192,13 +193,14 @@ would hand every policy the same three-second floor and flatter the worst of
 them most. The first target is demanded the moment the crane lets go, so a
 completed tour is exactly 60 s — twelve targets on a 5 s clock, the last of them
 closing on the minute. The punch campaign is drawn from the seed but timed from
-that same release, so punch *i* lands a tenth of a second into leg *i* — far
-enough in that the policy has taken the new demand and started to act on it, so
-the punch disturbs the walking rather than the handover. Position and yaw errors are means over every target actually scored, so
-a policy that falls early is judged only on the targets it reached — that
-flatters the short-lived candidates rather than penalising them. Step timings
-are deliberately absent: the sweeps shared the machine fifteen at a time, which
-inflates them by an order of magnitude. Measure those solo.
+that same release, so punch *i* lands a tenth of a second into waypoint *i* —
+far enough in that the policy has taken the new demand and started to act on it,
+so the punch disturbs the walking rather than the handover. Position and yaw
+errors are means over every target actually scored, so a policy that falls early
+is judged only on the targets it reached — that flatters the short-lived
+candidates rather than penalising them. Step timings are deliberately absent:
+the sweeps shared the machine fifteen at a time, which inflates them by an order
+of magnitude. Measure those solo.
 
 **`gr00t_wbc` now wins every column.** Fewest falls, longest survival, lowest
 position error and lowest yaw error — the first time one policy has taken all
@@ -211,10 +213,10 @@ It clears second place by eight points of completion, 78.9% against `homie`'s
 **Ten thousand seeds leave almost nothing tied.** No 95% Wilson interval in the
 completion column is wider than two points, so every gap in it is real except
 one: `homie` and `amo` finish 7104 and 6987 tours, 70.1-71.9% against
-69.0-70.8%, close enough that their intervals still touch. Everything else separates cleanly — `robomimic` is
-fourth, `asap` fifth, and the order below them holds. The sample size is past
-the point of being the limiting factor: what separates these policies now is the
-tour, not the statistics.
+69.0-70.8%, close enough that their intervals still touch. Everything else
+separates cleanly — `robomimic` is fourth, `asap` fifth, and the order below
+them holds. The sample size is past the point of being the limiting factor: what
+separates these policies now is the tour, not the statistics.
 
 **`openwbt` is accurate and still cannot finish**: second-best mean position
 error in the field and 104 completions in ten thousand tries. Its 35.9° yaw
@@ -257,93 +259,55 @@ Surviving the end of the tour is the discriminator, not tracking error.
 
 **The opening punch is its own filter.** It lands a tenth of a second after the
 crane lets go, before any policy has taken a step, and it ends 4.2% of `rl_gym`'s
-runs and 2.8% of `openwbt`'s inside the first leg. The top four lose almost
+runs and 2.8% of `openwbt`'s inside the first waypoint. The top four lose almost
 nothing there — two runs in ten thousand for `robomimic` and `asap` — so it
 separates the policies that cannot take a hit from a standing start rather than
 punishing the field at random.
 
 The runs behind this table are in [results/result.csv](results/result.csv), one
 row per run, with `clobot_with_arms` in that file too — ten thousand rows that
-no line of the table above draws on. Every run also carries what each leg of its
+no line of the table above draws on. Every run also carries what each waypoint of its
 tour cost, joint group by joint group, in the `s<i>_` columns described above.
 
 ### What the tour costs
 
-Summing those columns across all five joint groups and accumulating them from
-the release gives what a policy had spent by the time it reached a given leg.
-Each column is then given as a percentage of its own mean, so **100% is what
-that leg cost the average policy** and the figure says how a candidate compares
-to the field rather than how many joules it drew. The mean is over the ranked
-policies with a figure in that column; `clobot_with_arms` is scaled against the
-same mean without contributing to it. Read at every second leg:
+The last four columns come from the per-waypoint `s<i>_` columns, summed across
+all five joint groups. The **first waypoint** figures are what a policy spent in
+the opening five seconds, over every run that got through them. The **tour**
+figures are what a whole 60 s tour cost, averaged over completed runs only —
+those are the only runs in which all twelve waypoints ran their clock, so the
+only ones whose totals mean the same thing.
 
-| `--policy` | leg 0 | leg 2 | leg 4 | leg 6 | leg 8 | leg 10 |
-|---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | 77% | 77% | 77% | 78% | 91% | 89% |
-| `homie` | 105% | 106% | 105% | 105% | 122% | 119% |
-| `amo` | 91% | 84% | 83% | 84% | 98% | 98% |
-| `robomimic` | 66% | 67% | 68% | 70% | 82% | 80% |
-| `asap` | 73% | 74% | 75% | 76% | 89% | 87% |
-| `rl_mjlab` | 85% | 86% | 88% | 91% | 106% | 104% |
-| `holosoma` | 77% | 80% | 81% | 81% | 93% | 89% |
-| `run_residual` | 108% | 112% | 118% | 120% | 139% | 133% |
-| `rl_lab` | 60% | 64% | 67% | 69% | 81% | - |
-| `falcon` | 81% | 84% | 83% | 82% | - | - |
-| `rl_gym` | 294% | 291% | 280% | 269% | - | - |
-| `openwbt` | 82% | 76% | 75% | 74% | - | - |
-| `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~84%~~ | ~~82%~~ | ~~81%~~ | ~~79%~~ | ~~89%~~ | - |
+Energy here is mechanical work at the joints, `Σ|τ·ω|·dt`, which is a floor on
+what a battery would actually deliver rather than the draw itself: it counts no
+drivetrain loss and no current spent holding a limb still against gravity. Two
+policies an equal distance apart on this column would be further apart on a real
+robot, not closer.
 
-| `--policy` | leg 0 | leg 2 | leg 4 | leg 6 | leg 8 | leg 10 |
-|---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | 64% | 65% | 66% | 67% | 98% | 97% |
-| `homie` | 84% | 86% | 86% | 86% | 125% | 122% |
-| `amo` | 88% | 83% | 82% | 83% | 120% | 119% |
-| `robomimic` | 61% | 63% | 64% | 65% | 94% | 93% |
-| `asap` | 60% | 61% | 61% | 62% | 91% | 89% |
-| `rl_mjlab` | 62% | 64% | 66% | 67% | 98% | 96% |
-| `holosoma` | 39% | 44% | 46% | 47% | 70% | 69% |
-| `run_residual` | 70% | 74% | 79% | 81% | 118% | 115% |
-| `rl_lab` | 51% | 54% | 57% | 59% | 86% | - |
-| `falcon` | 62% | 66% | 67% | 67% | - | - |
-| `rl_gym` | 437% | 433% | 423% | 413% | - | - |
-| `openwbt` | 120% | 107% | 105% | 104% | - | - |
-| `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~51%~~ | ~~50%~~ | ~~50%~~ | ~~50%~~ | ~~73%~~ | - |
+Both are blank unless at least 2000 runs stand behind the average. Every policy
+clears that for the first waypoint; only seven clear it for the tour, the rest
+completing fewer than two thousand of their ten thousand tours. `clobot`
+finishes no waypoint at all and has neither. The `tour` columns are survivor
+figures by construction: they say what the tour cost the runs that finished it,
+not what it costs on average.
 
-**A cell is blank unless at least 2000 runs got that far.** The mean is taken
-only over runs whose leg *i* ran its full five-second clock, and a policy that
-rarely reaches a leg has no honest average there. Fourteen of the eighty-four
-cells fall under the floor: `clobot` never finishes a leg and has none at all;
-`rl_gym`, `openwbt` and `falcon` run out after leg 6, having reached leg 8 only
-897, 992 and 1472 times; and `rl_lab` and `clobot_with_arms` lose the last
-column alone, at 1287 and 1364. `run_residual` keeps its at 2153, barely.
+**`rl_gym` is the outlier that explains its row.** It burns 1065.1 J in the
+first waypoint against `gr00t_wbc`'s 279.1 — 3.8× — and shakes 6.8× as hard,
+3078.6 against 449.9. It is not walking so much as vibrating along the tour, and
+it completes 1.1%.
 
-**Read these as survivor figures, and read them down rather than across.** Each
-column averages a different subset of each policy's runs — everything that got
-that far — so a row thins out as it moves right, and by leg 10 `gr00t_wbc` is
-averaging 8416 runs against `run_residual`'s 2153. The columns say what a tour
-cost the policies that were still walking, not what it costs on average.
+**Cost does not predict standing up.** `rl_lab` spends the least of any policy
+in the first waypoint, 216.5 J, and completes 7.3%. `holosoma` is the smoothest
+in the field at both ends — 274.0 in the first waypoint and 4932.1 over a tour,
+well under everyone else — and completes 41.7%. Nothing about walking cheaply or
+smoothly keeps a policy upright when the punches start.
 
-Because each column is normalised against its own mean, and because the floor
-changes which policies that mean is taken over, the jump nearly every row makes
-between leg 6 and leg 8 is not the policies getting more expensive. It is
-`rl_gym`, `openwbt` and `falcon` dropping out and taking their costs with them:
-`rl_gym` alone sat at three to four times the field, and removing it pulls the
-mean down and everyone else's percentage up. A row is only comparable within a
-column. In absolute terms the field averaged 361.9 J and 704.4 krad/s² by the
-end of leg 0, and 4872.1 J and 6358.6 krad/s² by the end of leg 10.
-
-**`rl_gym` is the outlier that explains its row.** It draws 294% of the field's
-energy in the first leg and shakes at 437%, against `gr00t_wbc`'s 77% and 64%.
-It is not walking so much as vibrating along the tour, and it completes 1.1%.
-
-**Neither cheap nor smooth means good.** `rl_lab` spends the least energy in
-every column it appears in and completes 7.3%; `holosoma` shakes the least in
-every column and completes 41.7%. `gr00t_wbc` wins the table above while sitting
-mid-field on both — it is not the most efficient policy or the smoothest, it is
-the one still standing. Cost separates *how* a policy walks; only the completion
-column says whether it can.
+**What it does show is the price of a finish.** `homie` completes 71.0% to
+`gr00t_wbc`'s 78.9% but pays 6530.0 J and 8654.3 for its tours against 4947.5 J
+and 6879.2 — a third more energy and a quarter more shake for a worse result.
+`gr00t_wbc` is neither the cheapest nor the smoothest, and `robomimic` finishes
+a tour on less energy than anyone at 4438.4 J; the winner is simply the one that
+converts what it spends into staying upright.
 
 ## Inference
 
