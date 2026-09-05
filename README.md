@@ -283,12 +283,12 @@ Read at every second leg:
 | `rl_mjlab` | 309.4 J | 996.3 J | 1808.5 J | 2762.0 J | 3835.6 J | 5069.0 J |
 | `holosoma` | 278.5 J | 924.9 J | 1648.5 J | 2469.0 J | 3370.7 J | 4353.8 J |
 | `run_residual` | 389.8 J | 1297.1 J | 2413.1 J | 3659.0 J | 5024.4 J | 6482.7 J |
-| `rl_lab` | 216.5 J | 743.4 J | 1373.5 J | 2106.4 J | 2916.9 J | 3816.1 J |
-| `falcon` | 294.9 J | 970.7 J | 1692.7 J | 2484.6 J | 3302.9 J | - |
-| `rl_gym` | 1065.1 J | 3362.4 J | 5718.1 J | 8165.6 J | 10664.9 J | - |
-| `openwbt` | 297.3 J | 879.9 J | 1533.4 J | 2255.6 J | 3030.6 J | - |
+| `rl_lab` | 216.5 J | 743.4 J | 1373.5 J | 2106.4 J | 2916.9 J | - |
+| `falcon` | 294.9 J | 970.7 J | 1692.7 J | 2484.6 J | - | - |
+| `rl_gym` | 1065.1 J | 3362.4 J | 5718.1 J | 8165.6 J | - | - |
+| `openwbt` | 297.3 J | 879.9 J | 1533.4 J | 2255.6 J | - | - |
 | `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~304.3 J~~ | ~~948.3 J~~ | ~~1647.1 J~~ | ~~2402.0 J~~ | ~~3217.7 J~~ | ~~4084.4 J~~ |
+| ~~`clobot_with_arms`~~\*\* | ~~304.3 J~~ | ~~948.3 J~~ | ~~1647.1 J~~ | ~~2402.0 J~~ | ~~3217.7 J~~ | - |
 
 | `--policy` | leg 0 | leg 2 | leg 4 | leg 6 | leg 8 | leg 10 |
 |---:|---:|---:|---:|---:|---:|---:|
@@ -300,18 +300,20 @@ Read at every second leg:
 | `rl_mjlab` | 440.1 | 1381.5 | 2417.2 | 3552.8 | 4777.8 | 6107.0 |
 | `holosoma` | 274.0 | 938.7 | 1681.7 | 2517.5 | 3427.0 | 4413.9 |
 | `run_residual` | 493.6 | 1603.5 | 2899.1 | 4295.4 | 5781.1 | 7333.2 |
-| `rl_lab` | 362.0 | 1173.2 | 2093.4 | 3117.3 | 4214.1 | 5393.8 |
-| `falcon` | 440.1 | 1431.0 | 2454.3 | 3532.4 | 4628.9 | - |
-| `rl_gym` | 3078.6 | 9338.4 | 15592.3 | 21909.1 | 28250.4 | - |
-| `openwbt` | 844.6 | 2306.0 | 3864.2 | 5518.6 | 7258.0 | - |
+| `rl_lab` | 362.0 | 1173.2 | 2093.4 | 3117.3 | 4214.1 | - |
+| `falcon` | 440.1 | 1431.0 | 2454.3 | 3532.4 | - | - |
+| `rl_gym` | 3078.6 | 9338.4 | 15592.3 | 21909.1 | - | - |
+| `openwbt` | 844.6 | 2306.0 | 3864.2 | 5518.6 | - | - |
 | `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~359.1~~ | ~~1075.6~~ | ~~1845.2~~ | ~~2668.7~~ | ~~3549.5~~ | ~~4471.9~~ |
+| ~~`clobot_with_arms`~~\*\* | ~~359.1~~ | ~~1075.6~~ | ~~1845.2~~ | ~~2668.7~~ | ~~3549.5~~ | - |
 
-**A cell is blank unless at least 500 runs got that far.** The mean is taken
+**A cell is blank unless at least 2000 runs got that far.** The mean is taken
 only over runs whose leg *i* ran its full five-second clock, and a policy that
-rarely reaches leg 10 has no honest average there — `falcon` (469), `rl_gym`
-(247) and `openwbt` (244) fall under the floor in the last column, and `clobot`,
-which never finishes a leg, has no figure anywhere.
+rarely reaches a leg has no honest average there. Fourteen of the eighty-four
+cells fall under the floor: `clobot` never finishes a leg and has none at all;
+`rl_gym`, `openwbt` and `falcon` run out after leg 6, having reached leg 8 only
+897, 992 and 1472 times; and `rl_lab` and `clobot_with_arms` lose the last
+column alone, at 1287 and 1364. `run_residual` keeps its at 2153, barely.
 
 **Read these as survivor figures.** Each column averages a different subset of
 each policy's runs — everything that got that far — so a row thins out as it
