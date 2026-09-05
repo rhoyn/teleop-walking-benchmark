@@ -271,41 +271,45 @@ tour cost, joint group by joint group, in the `s<i>_` columns described above.
 
 Summing those columns across all five joint groups and accumulating them from
 the release gives what a policy had spent by the time it reached a given leg.
-Read at every second leg:
+Each column is then given as a percentage of its own mean, so **100% is what
+that leg cost the average policy** and the figure says how a candidate compares
+to the field rather than how many joules it drew. The mean is over the ranked
+policies with a figure in that column; `clobot_with_arms` is scaled against the
+same mean without contributing to it. Read at every second leg:
 
 | `--policy` | leg 0 | leg 2 | leg 4 | leg 6 | leg 8 | leg 10 |
 |---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | 279.1 J | 889.2 J | 1573.7 J | 2367.0 J | 3291.3 J | 4352.1 J |
-| `homie` | 379.9 J | 1221.9 J | 2145.6 J | 3205.2 J | 4407.3 J | 5788.2 J |
-| `amo` | 330.1 J | 971.2 J | 1695.3 J | 2555.0 J | 3550.7 J | 4755.3 J |
-| `robomimic` | 237.2 J | 780.4 J | 1394.9 J | 2117.4 J | 2949.9 J | 3916.4 J |
-| `asap` | 265.2 J | 852.2 J | 1526.6 J | 2315.5 J | 3221.9 J | 4259.4 J |
-| `rl_mjlab` | 309.4 J | 996.3 J | 1808.5 J | 2762.0 J | 3835.6 J | 5069.0 J |
-| `holosoma` | 278.5 J | 924.9 J | 1648.5 J | 2469.0 J | 3370.7 J | 4353.8 J |
-| `run_residual` | 389.8 J | 1297.1 J | 2413.1 J | 3659.0 J | 5024.4 J | 6482.7 J |
-| `rl_lab` | 216.5 J | 743.4 J | 1373.5 J | 2106.4 J | 2916.9 J | - |
-| `falcon` | 294.9 J | 970.7 J | 1692.7 J | 2484.6 J | - | - |
-| `rl_gym` | 1065.1 J | 3362.4 J | 5718.1 J | 8165.6 J | - | - |
-| `openwbt` | 297.3 J | 879.9 J | 1533.4 J | 2255.6 J | - | - |
+| `gr00t_wbc` | 77% | 77% | 77% | 78% | 91% | 89% |
+| `homie` | 105% | 106% | 105% | 105% | 122% | 119% |
+| `amo` | 91% | 84% | 83% | 84% | 98% | 98% |
+| `robomimic` | 66% | 67% | 68% | 70% | 82% | 80% |
+| `asap` | 73% | 74% | 75% | 76% | 89% | 87% |
+| `rl_mjlab` | 85% | 86% | 88% | 91% | 106% | 104% |
+| `holosoma` | 77% | 80% | 81% | 81% | 93% | 89% |
+| `run_residual` | 108% | 112% | 118% | 120% | 139% | 133% |
+| `rl_lab` | 60% | 64% | 67% | 69% | 81% | - |
+| `falcon` | 81% | 84% | 83% | 82% | - | - |
+| `rl_gym` | 294% | 291% | 280% | 269% | - | - |
+| `openwbt` | 82% | 76% | 75% | 74% | - | - |
 | `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~304.3 J~~ | ~~948.3 J~~ | ~~1647.1 J~~ | ~~2402.0 J~~ | ~~3217.7 J~~ | - |
+| ~~`clobot_with_arms`~~\*\* | ~~84%~~ | ~~82%~~ | ~~81%~~ | ~~79%~~ | ~~89%~~ | - |
 
 | `--policy` | leg 0 | leg 2 | leg 4 | leg 6 | leg 8 | leg 10 |
 |---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | 449.9 | 1397.1 | 2419.1 | 3542.5 | 4784.3 | 6146.0 |
-| `homie` | 591.1 | 1843.9 | 3161.1 | 4588.0 | 6124.8 | 7787.3 |
-| `amo` | 622.5 | 1786.5 | 3033.7 | 4403.5 | 5894.8 | 7539.3 |
-| `robomimic` | 431.4 | 1354.0 | 2341.7 | 3424.2 | 4604.0 | 5896.4 |
-| `asap` | 425.0 | 1305.2 | 2255.9 | 3292.4 | 4428.6 | 5646.1 |
-| `rl_mjlab` | 440.1 | 1381.5 | 2417.2 | 3552.8 | 4777.8 | 6107.0 |
-| `holosoma` | 274.0 | 938.7 | 1681.7 | 2517.5 | 3427.0 | 4413.9 |
-| `run_residual` | 493.6 | 1603.5 | 2899.1 | 4295.4 | 5781.1 | 7333.2 |
-| `rl_lab` | 362.0 | 1173.2 | 2093.4 | 3117.3 | 4214.1 | - |
-| `falcon` | 440.1 | 1431.0 | 2454.3 | 3532.4 | - | - |
-| `rl_gym` | 3078.6 | 9338.4 | 15592.3 | 21909.1 | - | - |
-| `openwbt` | 844.6 | 2306.0 | 3864.2 | 5518.6 | - | - |
+| `gr00t_wbc` | 64% | 65% | 66% | 67% | 98% | 97% |
+| `homie` | 84% | 86% | 86% | 86% | 125% | 122% |
+| `amo` | 88% | 83% | 82% | 83% | 120% | 119% |
+| `robomimic` | 61% | 63% | 64% | 65% | 94% | 93% |
+| `asap` | 60% | 61% | 61% | 62% | 91% | 89% |
+| `rl_mjlab` | 62% | 64% | 66% | 67% | 98% | 96% |
+| `holosoma` | 39% | 44% | 46% | 47% | 70% | 69% |
+| `run_residual` | 70% | 74% | 79% | 81% | 118% | 115% |
+| `rl_lab` | 51% | 54% | 57% | 59% | 86% | - |
+| `falcon` | 62% | 66% | 67% | 67% | - | - |
+| `rl_gym` | 437% | 433% | 423% | 413% | - | - |
+| `openwbt` | 120% | 107% | 105% | 104% | - | - |
 | `clobot` | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~359.1~~ | ~~1075.6~~ | ~~1845.2~~ | ~~2668.7~~ | ~~3549.5~~ | - |
+| ~~`clobot_with_arms`~~\*\* | ~~51%~~ | ~~50%~~ | ~~50%~~ | ~~50%~~ | ~~73%~~ | - |
 
 **A cell is blank unless at least 2000 runs got that far.** The mean is taken
 only over runs whose leg *i* ran its full five-second clock, and a policy that
@@ -315,16 +319,24 @@ cells fall under the floor: `clobot` never finishes a leg and has none at all;
 897, 992 and 1472 times; and `rl_lab` and `clobot_with_arms` lose the last
 column alone, at 1287 and 1364. `run_residual` keeps its at 2153, barely.
 
-**Read these as survivor figures.** Each column averages a different subset of
-each policy's runs — everything that got that far — so a row thins out as it
-moves right, and by leg 10 `gr00t_wbc` is averaging 8416 runs against
-`run_residual`'s 2153. The columns say what a tour cost the policies that were
-still walking, not what it costs on average.
+**Read these as survivor figures, and read them down rather than across.** Each
+column averages a different subset of each policy's runs — everything that got
+that far — so a row thins out as it moves right, and by leg 10 `gr00t_wbc` is
+averaging 8416 runs against `run_residual`'s 2153. The columns say what a tour
+cost the policies that were still walking, not what it costs on average.
 
-**`rl_gym` is the outlier that explains its row.** It burns 1065 J in the first
-leg alone, 3.8× `gr00t_wbc`'s 279 J, and shakes 6.8× as hard — 3079 against
-450. It is not walking so much as vibrating along the tour, and it completes
-1.1%.
+Because each column is normalised against its own mean, and because the floor
+changes which policies that mean is taken over, the jump nearly every row makes
+between leg 6 and leg 8 is not the policies getting more expensive. It is
+`rl_gym`, `openwbt` and `falcon` dropping out and taking their costs with them:
+`rl_gym` alone sat at three to four times the field, and removing it pulls the
+mean down and everyone else's percentage up. A row is only comparable within a
+column. In absolute terms the field averaged 361.9 J and 704.4 krad/s² by the
+end of leg 0, and 4872.1 J and 6358.6 krad/s² by the end of leg 10.
+
+**`rl_gym` is the outlier that explains its row.** It draws 294% of the field's
+energy in the first leg and shakes at 437%, against `gr00t_wbc`'s 77% and 64%.
+It is not walking so much as vibrating along the tour, and it completes 1.1%.
 
 **Neither cheap nor smooth means good.** `rl_lab` spends the least energy in
 every column it appears in and completes 7.3%; `holosoma` shakes the least in
