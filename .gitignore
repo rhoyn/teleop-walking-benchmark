@@ -22,3 +22,8 @@ policies/sonic/*.onnx
 
 # wcompton declares no licence upstream; NOTICE says fetch, do not commit
 policies/wcompton/model.onnx
+
+# bfm_zero's checkpoint is 123 MB, over GitHub's 100 MB per-file limit
+policies/bfm_zero/model.onnx
+
+# latents.bin is a CC BY-NC derivative too; *.bin above already holds it out

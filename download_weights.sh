@@ -30,6 +30,10 @@ WEIGHTS=(
   "policies/run_residual/model_residual.onnx"
   "5124422b4deb64cbf20cd9b7fb9f3bde9f1f0269fff9d4d4a93512cdcfdf9089"
   "https://raw.githubusercontent.com/PMY9527/RUN_DEPLOY/d6dba9c560c1a201dde244d1e2e600a399d8a607/robots/g1_29dof/config/policy/velocity/residual/exported/point25.onnx"
+
+  "policies/bfm_zero/model.onnx"
+  "209097902c45621eebab2edb81070c31895fcdd558f0cf6f7f5a360fd747ab74"
+  "https://huggingface.co/LeCAR-Lab/BFM-Zero/resolve/62b4206d68e026de5e5dc7efb1529bccfb95164c/model/exported/FBcprAuxModel.onnx"
 )
 
 for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do

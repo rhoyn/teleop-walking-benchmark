@@ -4778,6 +4778,8 @@ const std::vector<float>& engine_run_single(
 
 #include "policies/zealot/policy.cpp"
 
+#include "policies/bfm_zero/policy.cpp"
+
 /**
  * Every policy this binary was built with.
  *
@@ -4800,7 +4802,7 @@ const char* const POLICY_NAMES[] = {
     "grove",    "dm_agile",      "dm_march",
     "g1_gym",   "legged_rl_lab", "nanog1",
     "schoi",    "stepdown",      "wcompton",
-    "wty_cpp",  "zealot"
+    "wty_cpp",  "zealot",   "bfm_zero"
 };
 
 /**
@@ -4863,6 +4865,7 @@ std::shared_ptr<ModelPolicy> make_policy(const char* name) {
   if (wanted == "wcompton") return std::make_shared<wcompton::Policy>();
   if (wanted == "wty_cpp") return std::make_shared<wty_cpp::Policy>();
   if (wanted == "zealot") return std::make_shared<zealot::Policy>();
+  if (wanted == "bfm_zero") return std::make_shared<bfm_zero::Policy>();
 
   std::string msg = "unknown --policy '" + wanted + "'. Valid names:";
   bool first = true;

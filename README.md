@@ -2,10 +2,10 @@
 
 Blog post: [Stable walk](https://rhoyn.com/stable-walk?utm_source=github)
 
-Twenty-eight open-source Unitree G1 walking policies ported to one C++ interface
+Twenty-nine open-source Unitree G1 walking policies ported to one C++ interface
 and scored against the same waypoint tour in MuJoCo. Twenty-nine of the
-thirty-three checkpoints are committed under `policies/`; `./download_weights.sh`
-pulls three more and `./export_onnx.py` converts the last from a fetched
+thirty-four checkpoints are committed under `policies/`; `./download_weights.sh`
+pulls four more and `./export_onnx.py` converts the last from a fetched
 checkpoint.
 
 The difficulty is deliberate. A benchmark every candidate completes ranks
@@ -161,7 +161,7 @@ hit.
 
 ## The 50-seed campaign
 
-Seeds 0-49, every policy over every seed: **1,450 runs**, 9.8 hours of simulated
+Seeds 0-49, every policy over every seed: **1,500 runs**, 10.1 hours of simulated
 walking, eight tours in flight on an RTX 4090 / Ryzen 7 7800X3D. No run errored
 and no run was interrupted, so every row in `results/result.csv` is a
 measurement. Every policy runs the same seed range into the same file, so the
@@ -206,6 +206,7 @@ is handed its robot mid-gesture.
 | `falcon` | **6%** | 29 s | 33 cm | 6° | - | - |
 | `rl_lab` | **2%** | 22 s | 16 cm | 68° | - | - |
 | `openwbt` | **0%** | 22 s | 38 cm | 40° | - | - |
+| `bfm_zero` | **0%** | 20 s | 248 cm | 95° | - | - |
 | `handoff` | **0%** | 19 s | 86 cm | 5° | - | - |
 | `rl_gym` | **0%** | 15 s | 48 cm | 6° | - | - |
 | `rl_mjlab` | **0%** | 6 s | 154 cm | 20° | - | - |
@@ -405,8 +406,8 @@ calls against 3,000 policy steps, and inference is under 3% of a run.
 
 ## Policy weights
 
-Thirty-three checkpoints across the twenty-eight policies. Twenty-nine are
-committed beside the policy that loads them; `./download_weights.sh` pulls seven
+Thirty-four checkpoints across the twenty-nine policies. Twenty-nine are
+committed beside the policy that loads them; `./download_weights.sh` pulls eight
 files from their upstream repositories and checks each file's sha256 as it
 lands.
 
@@ -419,10 +420,21 @@ which is a repository-size choice about PyTorch blobs and not a licence one.
 generated on your machine rather than committed. Converting a file to another
 format does not make it redistributable.
 
+Three rows in the table cannot be reproduced from a clean clone, and they are
+named here rather than left to fail at run time. `sonic` ships 825 MB of
+weights, over GitHub's per-file limit, and `wcompton` declares no licence
+upstream; neither is committed and neither has a `./download_weights.sh` entry
+yet. `bfm_zero`'s checkpoint is fetched, but the 8 KB latent table it also
+loads is a CC BY-NC derivative and is not committed. Their figures are real
+measurements taken on this machine; obtaining the weights is on you until those
+three are resolved.
+
 Every checkpoint is third-party, as are the Unitree G1 description under
-`assets/` and the bundled font. Their provenance and terms — which one is
-non-commercial, which two declare nothing at all, and which is sim-only — are
-recorded in [NOTICE](NOTICE). Read it before you build on a result.
+`assets/` and the bundled font. [NOTICE](NOTICE) records provenance and terms
+for the original thirteen policies. **It has not yet been extended to the
+sixteen added since**, so for those the licence position is undetermined rather
+than cleared — do not read silence there as permission. Settling that is the
+next piece of work on this repository.
 
 ## Adding a policy
 
