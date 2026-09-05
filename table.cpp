@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -365,7 +366,16 @@ accumulate(const std::string& path) {
 /**
  * Order the rows as the table prints them.
  *
- * Most completions first, because that is the column the table is read on.
+ * On the printed triple, in the order the columns are read: completions
+ * first, then survival, then position error, which is the one of the three
+ * where less is better. Comparing the rounded figures rather than the sums
+ * behind them is what makes the order visible in the table -- a reader can
+ * check it against the cells rather than having to trust the campaign file.
+ * Ties on all three fall back to the name so the order is total.
+ *
+ * A row with no scored target has no position error to compare, and sorts
+ * below every row that has one on the same completions and survival.
+ *
  * `UNRANKED` is pulled to the bottom whatever it scored, since it is there
  * to be read against `clobot` rather than against the field.
  *
@@ -385,9 +395,34 @@ std::vector<std::string> ordered(
       names.end(),
       [&totals](const std::string& a, const std::string& b) {
         if ((a == UNRANKED) != (b == UNRANKED)) return b == UNRANKED;
-        const long ca = totals.at(a).completed;
-        const long cb = totals.at(b).completed;
-        return ca != cb ? ca > cb : a < b;
+        const Totals& ta = totals.at(a);
+        const Totals& tb = totals.at(b);
+
+        const long pa = std::lround(
+            100.0 * static_cast<double>(ta.completed) /
+            static_cast<double>(ta.runs)
+        );
+        const long pb = std::lround(
+            100.0 * static_cast<double>(tb.completed) /
+            static_cast<double>(tb.runs)
+        );
+        if (pa != pb) return pa > pb;
+
+        const long sa =
+            std::lround(ta.survival / static_cast<double>(ta.runs));
+        const long sb =
+            std::lround(tb.survival / static_cast<double>(tb.runs));
+        if (sa != sb) return sa > sb;
+
+        if ((ta.targets > 0) != (tb.targets > 0)) return ta.targets > 0;
+        if (ta.targets > 0) {
+          const long ea =
+              std::lround(ta.pos / static_cast<double>(ta.targets));
+          const long eb =
+              std::lround(tb.pos / static_cast<double>(tb.targets));
+          if (ea != eb) return ea < eb;
+        }
+        return a < b;
       }
   );
   return names;
@@ -412,8 +447,8 @@ std::string row(
   const double runs = static_cast<double>(t.runs);
   const double weight = static_cast<double>(t.targets);
   const std::vector<std::string> cells = {
-      fixed(100.0 * static_cast<double>(t.completed) / runs, 1) + "%",
-      fixed(t.survival / runs, 1) + " s",
+      fixed(100.0 * static_cast<double>(t.completed) / runs, 0) + "%",
+      fixed(t.survival / runs, 0) + " s",
       t.targets > 0 ? fixed(t.pos / weight, 0) + " cm" : "-",
       t.targets > 0 ? fixed(t.yaw / weight, 0) + "°" : "-",
       cell(t.tour_e, t.finished, t.runs, 0, " J"),

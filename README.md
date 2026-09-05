@@ -169,8 +169,8 @@ whole table is one campaign.
 
 **Fifty seeds is a small sample, and the table has to be read as one.** A 95%
 Wilson interval on a completion figure in the middle of the field is about
-twenty-five points wide — `decoupled_wbc`'s 74.0% spans 60.4-84.1 and
-`gr00t_wbc`'s 64.0% spans 50.1-75.9 — so adjacent rows are not separated by
+twenty-five points wide — `decoupled_wbc`'s 74% spans 60.4-84.1 and
+`gr00t_wbc`'s 64% spans 50.1-75.9 — so adjacent rows are not separated by
 this campaign. The column that is solid is the difference between a policy that
 finishes tours and one that finishes none.
 
@@ -192,35 +192,35 @@ is handed its robot mid-gesture.
 
 | `--policy` | completed | survived | pos err | yaw err | tour<br>battery<br>energy<br>consumed | tour<br>vibrations |
 |---:|---:|---:|---:|---:|---:|---:|
-| `decoupled_wbc` | **74.0%** | 54.8 s | 8 cm | 4° | 5038 J | 10480 |
-| `gr00t_wbc` | **64.0%** | 53.4 s | 11 cm | 3° | 5636 J | 11251 |
-| `homie` | **64.0%** | 54.5 s | 17 cm | 35° | 6671 J | 12510 |
-| `amo` | **62.0%** | 52.7 s | 27 cm | 14° | 6678 J | 12759 |
-| `grove` | **58.0%** | 53.5 s | 17 cm | 3° | 8288 J | 12254 |
-| `wbc_agile` | **52.0%** | 51.4 s | 14 cm | 4° | 5399 J | 9266 |
-| `sonic` | **50.0%** | 50.2 s | 14 cm | 5° | 7143 J | 12621 |
-| `asap` | **28.0%** | 41.4 s | 81 cm | 27° | 6523 J | 10813 |
-| `wty_cpp` | **18.0%** | 37.9 s | 14 cm | 7° | - | - |
-| `robomimic` | **16.0%** | 39.2 s | 100 cm | 4° | - | - |
-| `run_residual` | **10.0%** | 36.9 s | 545 cm | 4° | - | - |
-| `falcon` | **6.0%** | 28.7 s | 33 cm | 6° | - | - |
-| `rl_lab` | **2.0%** | 21.5 s | 16 cm | 68° | - | - |
-| `clobot` | **0.0%** | 1.9 s | - | - | - | - |
-| `dm_agile` | **0.0%** | 3.4 s | 67 cm | 93° | - | - |
-| `dm_march` | **0.0%** | 5.5 s | 166 cm | 99° | - | - |
-| `g1_gym` | **0.0%** | 2.5 s | 72 cm | 22° | - | - |
-| `handoff` | **0.0%** | 18.9 s | 86 cm | 5° | - | - |
-| `holosoma` | **0.0%** | 5.4 s | 49 cm | 19° | - | - |
-| `legged_rl_lab` | **0.0%** | 3.8 s | 130 cm | 33° | - | - |
-| `nanog1` | **0.0%** | 2.1 s | 113 cm | 3° | - | - |
-| `openwbt` | **0.0%** | 22.1 s | 38 cm | 40° | - | - |
-| `rl_gym` | **0.0%** | 15.0 s | 48 cm | 6° | - | - |
-| `rl_mjlab` | **0.0%** | 5.6 s | 154 cm | 20° | - | - |
-| `schoi` | **0.0%** | 3.1 s | 187 cm | 61° | - | - |
-| `stepdown` | **0.0%** | 1.5 s | - | - | - | - |
-| `wcompton` | **0.0%** | 1.8 s | - | - | - | - |
-| `zealot` | **0.0%** | 6.1 s | 285 cm | 97° | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**6.0%**~~ | ~~33.0 s~~ | ~~35 cm~~ | ~~5°~~ | - | - |
+| `decoupled_wbc` | **74%** | 55 s | 8 cm | 4° | 5038 J | 10480 |
+| `homie` | **64%** | 54 s | 17 cm | 35° | 6671 J | 12510 |
+| `gr00t_wbc` | **64%** | 53 s | 11 cm | 3° | 5636 J | 11251 |
+| `amo` | **62%** | 53 s | 27 cm | 14° | 6678 J | 12759 |
+| `grove` | **58%** | 53 s | 17 cm | 3° | 8288 J | 12254 |
+| `wbc_agile` | **52%** | 51 s | 14 cm | 4° | 5399 J | 9266 |
+| `sonic` | **50%** | 50 s | 14 cm | 5° | 7143 J | 12621 |
+| `asap` | **28%** | 41 s | 81 cm | 27° | 6523 J | 10813 |
+| `wty_cpp` | **18%** | 38 s | 14 cm | 7° | - | - |
+| `robomimic` | **16%** | 39 s | 100 cm | 4° | - | - |
+| `run_residual` | **10%** | 37 s | 545 cm | 4° | - | - |
+| `falcon` | **6%** | 29 s | 33 cm | 6° | - | - |
+| `rl_lab` | **2%** | 22 s | 16 cm | 68° | - | - |
+| `openwbt` | **0%** | 22 s | 38 cm | 40° | - | - |
+| `handoff` | **0%** | 19 s | 86 cm | 5° | - | - |
+| `rl_gym` | **0%** | 15 s | 48 cm | 6° | - | - |
+| `rl_mjlab` | **0%** | 6 s | 154 cm | 20° | - | - |
+| `zealot` | **0%** | 6 s | 285 cm | 97° | - | - |
+| `holosoma` | **0%** | 5 s | 49 cm | 19° | - | - |
+| `dm_march` | **0%** | 5 s | 166 cm | 99° | - | - |
+| `legged_rl_lab` | **0%** | 4 s | 130 cm | 33° | - | - |
+| `dm_agile` | **0%** | 3 s | 67 cm | 93° | - | - |
+| `schoi` | **0%** | 3 s | 187 cm | 61° | - | - |
+| `g1_gym` | **0%** | 2 s | 72 cm | 22° | - | - |
+| `nanog1` | **0%** | 2 s | 113 cm | 3° | - | - |
+| `clobot` | **0%** | 2 s | - | - | - | - |
+| `stepdown` | **0%** | 2 s | - | - | - | - |
+| `wcompton` | **0%** | 2 s | - | - | - | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**6%**~~ | ~~33 s~~ | ~~35 cm~~ | ~~5°~~ | - | - |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -255,15 +255,16 @@ the sweeps shared the machine fifteen at a time, which inflates them by an order
 of magnitude. Measure those solo.
 
 **`decoupled_wbc` leads the field, but fifty seeds cannot crown it.** It takes
-completion at 74.0%, survival at 54.8 s and position error at 8 cm, and it is
-the only policy to lead all three. Its interval nevertheless runs 60.4-84.1 and
+completion at 74%, survival at 55 s and position error at 8 cm, and it is the
+only policy to lead all three. Its interval nevertheless runs 60.4-84.1 and
 overlaps every one of the six rows beneath it, so what this campaign supports is
-that it belongs in the leading group, not that it is first. `gr00t_wbc` and
-`homie` tie exactly at 64.0%, 32 completed tours each.
+that it belongs in the leading group, not that it is first. `homie` and
+`gr00t_wbc` tie exactly on completion, 32 tours each, and are separated in the
+table only by a second of survival.
 
 **Fifty seeds leave almost everything tied.** No adjacent pair in the top eight
 is separated by its Wilson intervals. Seven policies sit between 50% and 74% —
-`decoupled_wbc`, `gr00t_wbc`, `homie`, `amo`, `grove`, `wbc_agile`, `sonic` —
+`decoupled_wbc`, `homie`, `gr00t_wbc`, `amo`, `grove`, `wbc_agile`, `sonic` —
 and 24 to 26 points of interval is wider than the whole spread between them. The
 gap the sample does support is the one below `asap`: the eight policies that
 finish tours against the twenty that mostly or never do.
@@ -355,12 +356,12 @@ and no current spent holding a limb still against gravity. Two policies an equal
 distance apart on this column would be further apart on a real robot, not
 closer.
 
-**What the columns show is the price of a finish.** `homie` completes 64.0% to
-`decoupled_wbc`'s 74.0% but pays 6671 J and 12510 for its tours against 5038 J
+**What the columns show is the price of a finish.** `homie` completes 64% to
+`decoupled_wbc`'s 74% but pays 6671 J and 12510 for its tours against 5038 J
 and 10480 — a third more energy and a fifth more shake for a worse result. This
 time the leader is also the cheapest of the eight rows that carry figures, which
 the previous campaign's winner was not; `wbc_agile` is the smoothest at 9266
-against `decoupled_wbc`'s 10480 while completing 52.0%. The winner is simply the
+against `decoupled_wbc`'s 10480 while completing 52%. The winner is simply the
 one that converts what it spends into staying upright.
 
 Every figure in these two columns is roughly half again what it was before the
