@@ -219,8 +219,9 @@ std::string fixed(
  *
  * @param[in] sum     the running total
  * @param[in] count   how many runs contributed to it
- * @param[in] places  decimals to keep; energy is whole joules, since a
- *                    tenth of a joule over a whole tour is noise
+ * @param[in] places  decimals to keep; the cost columns are whole units,
+ *                    since a tenth of a joule or of a krad/s^2 over a
+ *                    whole tour is noise
  * @param[in] unit    appended to the figure, empty for a bare number
  * @returns the cell text
  * @exceptsafe strong
@@ -416,8 +417,8 @@ std::string row(
       t.targets > 0 ? fixed(t.yaw / weight, 0) + "°" : "-",
       cell(t.first_e, t.opened, 0, " J"),
       cell(t.tour_e, t.finished, 0, " J"),
-      cell(t.first_v, t.opened, 1, ""),
-      cell(t.tour_v, t.finished, 1, "")
+      cell(t.first_v, t.opened, 0, ""),
+      cell(t.tour_v, t.finished, 0, "")
   };
 
   const bool unranked = name == UNRANKED;

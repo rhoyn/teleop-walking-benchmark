@@ -160,20 +160,20 @@ over from a stance it was not necessarily trained around.
 
 | `--policy` | completed | survived | pos err | yaw err | first waypoint<br>battery energy<br>consumed | tour<br>battery energy<br>consumed | first waypoint<br>vibrations | tour<br>vibrations |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `gr00t_wbc` | **78.9%** | 56.7 s | 10 cm | 3° | 279 J | 4947 J | 449.9 | 6879.2 |
-| `homie` | **71.0%** | 55.6 s | 18 cm | 34° | 380 J | 6530 J | 591.1 | 8654.3 |
-| `amo` | **69.9%** | 54.5 s | 23 cm | 12° | 330 J | 5420 J | 622.5 | 8402.0 |
-| `robomimic` | **65.2%** | 54.9 s | 11 cm | 4° | 237 J | 4438 J | 431.4 | 6577.5 |
-| `asap` | **53.5%** | 52.5 s | 13 cm | 10° | 265 J | 4813 J | 425.0 | 6277.0 |
-| `rl_mjlab` | **45.9%** | 51.0 s | 15 cm | 3° | 309 J | 5710 J | 440.1 | 6787.6 |
-| `holosoma` | **41.7%** | 50.1 s | 18 cm | 3° | 279 J | 4874 J | 274.0 | 4932.1 |
-| `run_residual` | **14.4%** | 39.2 s | 432 cm | 3° | 390 J | - | 493.6 | - |
-| `rl_lab` | **7.3%** | 36.3 s | 14 cm | 65° | 216 J | - | 362.0 | - |
-| `falcon` | **2.3%** | 28.3 s | 34 cm | 4° | 295 J | - | 440.1 | - |
-| `rl_gym` | **1.1%** | 23.9 s | 58 cm | 6° | 1065 J | - | 3078.6 | - |
-| `openwbt` | **1.0%** | 26.1 s | 10 cm | 36° | 297 J | - | 844.6 | - |
+| `gr00t_wbc` | **78.9%** | 56.7 s | 10 cm | 3° | 279 J | 4947 J | 450 | 6879 |
+| `homie` | **71.0%** | 55.6 s | 18 cm | 34° | 380 J | 6530 J | 591 | 8654 |
+| `amo` | **69.9%** | 54.5 s | 23 cm | 12° | 330 J | 5420 J | 622 | 8402 |
+| `robomimic` | **65.2%** | 54.9 s | 11 cm | 4° | 237 J | 4438 J | 431 | 6577 |
+| `asap` | **53.5%** | 52.5 s | 13 cm | 10° | 265 J | 4813 J | 425 | 6277 |
+| `rl_mjlab` | **45.9%** | 51.0 s | 15 cm | 3° | 309 J | 5710 J | 440 | 6788 |
+| `holosoma` | **41.7%** | 50.1 s | 18 cm | 3° | 279 J | 4874 J | 274 | 4932 |
+| `run_residual` | **14.4%** | 39.2 s | 432 cm | 3° | 390 J | - | 494 | - |
+| `rl_lab` | **7.3%** | 36.3 s | 14 cm | 65° | 216 J | - | 362 | - |
+| `falcon` | **2.3%** | 28.3 s | 34 cm | 4° | 295 J | - | 440 | - |
+| `rl_gym` | **1.1%** | 23.9 s | 58 cm | 6° | 1065 J | - | 3079 | - |
+| `openwbt` | **1.0%** | 26.1 s | 10 cm | 36° | 297 J | - | 845 | - |
 | `clobot` | **0.0%** | 2.2 s | - | - | - | - | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~34 cm~~ | ~~5°~~ | ~~304 J~~ | - | ~~359.1~~ | - |
+| ~~`clobot_with_arms`~~\*\* | ~~**8.6%**~~ | ~~33.1 s~~ | ~~34 cm~~ | ~~5°~~ | ~~304 J~~ | - | ~~359~~ | - |
 
 \*\* Struck through because it does not rank. `clobot_with_arms` is the same
 checkpoint as `clobot`, wired to own all 29 joints instead of the 15 every other
@@ -289,9 +289,9 @@ figures are what a whole 60 s tour cost, averaged over completed runs only —
 those are the only runs in which all twelve waypoints ran their clock, so the
 only ones whose totals mean the same thing.
 
-Energy is reported in whole joules, and the two error columns in whole
-centimetres and degrees, which is as much precision as a mean over ten thousand
-runs is worth reading. Energy itself is mechanical work at the joints,
+Every cost and error column is reported in whole units, which is as much
+precision as a mean over ten thousand runs is worth reading. Energy itself is
+mechanical work at the joints,
 `Σ|τ·ω|·dt`, which is a floor on
 what a battery would actually deliver rather than the draw itself: it counts no
 drivetrain loss and no current spent holding a limb still against gravity. Two
@@ -306,19 +306,19 @@ figures by construction: they say what the tour cost the runs that finished it,
 not what it costs on average.
 
 **`rl_gym` is the outlier that explains its row.** It burns 1065 J in the first
-waypoint against `gr00t_wbc`'s 279 — 3.8× — and shakes 6.8× as hard, 3078.6
-against 449.9. It is not walking so much as vibrating along the tour, and
+waypoint against `gr00t_wbc`'s 279 — 3.8× — and shakes 6.8× as hard, 3079
+against 450. It is not walking so much as vibrating along the tour, and
 it completes 1.1%.
 
 **Cost does not predict standing up.** `rl_lab` spends the least of any policy
 in the first waypoint, 216 J, and completes 7.3%. `holosoma` is the smoothest
-in the field at both ends — 274.0 in the first waypoint and 4932.1 over a tour,
+in the field at both ends — 274 in the first waypoint and 4932 over a tour,
 well under everyone else — and completes 41.7%. Nothing about walking cheaply or
 smoothly keeps a policy upright when the punches start.
 
 **What it does show is the price of a finish.** `homie` completes 71.0% to
-`gr00t_wbc`'s 78.9% but pays 6530 J and 8654.3 for its tours against 4947 J and
-6879.2 — a third more energy and a quarter more shake for a worse result.
+`gr00t_wbc`'s 78.9% but pays 6530 J and 8654 for its tours against 4947 J and
+6879 — a third more energy and a quarter more shake for a worse result.
 `gr00t_wbc` is neither the cheapest nor the smoothest, and `robomimic` finishes
 a tour on less energy than anyone at 4438 J; the winner is simply the one that
 converts what it spends into staying upright.
