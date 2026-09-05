@@ -65,16 +65,17 @@ const int SONIC_IL_OF_MJ[SONIC_NUM_ACTIONS] = {0,  3,  6,  9,  13, 17, 1,  4,
 const int SONIC_LOWER_IL[12] = {0, 3, 6, 9, 13, 17, 1, 4, 7, 10, 14, 18};
 
 const double SONIC_DEFAULT_ANGLES[SONIC_NUM_ACTIONS] = {
-    -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0,  0.0, 0.669,
-    -0.363, 0.0, 0.0, 0.0,   0.0,    0.2, 0.2,    0.0,  0.6, 0.0,
-    0.0,    0.0, 0.2, -0.2,  0.0,    0.6, 0.0,    0.0,  0.0
+    -0.312, 0.0, 0.0, 0.669, -0.363, 0.0, -0.312, 0.0, 0.0, 0.669,
+    -0.363, 0.0, 0.0, 0.0,   0.0,    0.2, 0.2,    0.0, 0.6, 0.0,
+    0.0,    0.0, 0.2, -0.2,  0.0,    0.6, 0.0,    0.0, 0.0
 };
 
 const double SONIC_OMEGA = 2.0 * M_PI * 10.0;
 
 const double SONIC_ZETA = 2.0;
 
-const double SONIC_ARMATURE[4] = {0.003609725, 0.010177520, 0.025101925, 0.00425};
+const double SONIC_ARMATURE[4] =
+    {0.003609725, 0.010177520, 0.025101925, 0.00425};
 
 const double SONIC_EFFORT[4] = {25.0, 88.0, 139.0, 5.0};
 
@@ -188,7 +189,9 @@ int sonic_plan(
     const double move[3],
     const double face[3],
     int seed,
-    std::vector<std::array<double, SONIC_QPOS>>& out
+    std::vector<std::array<
+        double,
+        SONIC_QPOS>>& out
 ) {
   std::vector<float>& ctx_in = engine_input(e, "context_mujoco_qpos").data;
   for (int f = 0; f < SONIC_CTX_FRAMES; ++f) {
@@ -226,7 +229,9 @@ int sonic_plan(
 
   const std::vector<float>& qpos = engine_output(e, "mujoco_qpos").data;
   const int frames = std::clamp(
-      static_cast<int>(std::lround(engine_output(e, "num_pred_frames").data[0])),
+      static_cast<int>(
+          std::lround(engine_output(e, "num_pred_frames").data[0])
+      ),
       0,
       SONIC_PLAN_FRAMES
   );
@@ -241,7 +246,9 @@ int sonic_plan(
 }
 
 void sonic_resample(
-    const std::vector<std::array<double, SONIC_QPOS>>& raw,
+    const std::vector<std::array<
+        double,
+        SONIC_QPOS>>& raw,
     std::vector<SonicFrame>& out
 ) {
   const int n30 = static_cast<int>(raw.size());
@@ -268,8 +275,7 @@ void sonic_resample(
 
     for (int j = 0; j < SONIC_NUM_ACTIONS; ++j) {
       const int mj = SONIC_MJ_OF_IL[j];
-      fr.q[static_cast<size_t>(j)] =
-          a[7 + mj] * (1.0 - w) + b[7 + mj] * w;
+      fr.q[static_cast<size_t>(j)] = a[7 + mj] * (1.0 - w) + b[7 + mj] * w;
     }
   }
   for (int f = 0; f + 1 < n50; ++f) {
@@ -280,7 +286,8 @@ void sonic_resample(
           PERIOD_S;
     }
   }
-  if (n50 >= 2) out[static_cast<size_t>(n50 - 1)].dq = out[static_cast<size_t>(n50 - 2)].dq;
+  if (n50 >= 2)
+    out[static_cast<size_t>(n50 - 1)].dq = out[static_cast<size_t>(n50 - 2)].dq;
 }
 
 inline const SonicFrame& sonic_at(
@@ -297,8 +304,8 @@ void sonic_context(
     double ctx[SONIC_CTX_FRAMES][SONIC_QPOS]
 ) {
   for (int n = 0; n < SONIC_CTX_FRAMES; ++n) {
-    const double t =
-        static_cast<double>(from) * PERIOD_S + static_cast<double>(n) / SONIC_PLAN_HZ;
+    const double t = static_cast<double>(from) * PERIOD_S +
+                     static_cast<double>(n) / SONIC_PLAN_HZ;
     const double f50 = t / PERIOD_S;
     const int f0 = static_cast<int>(std::floor(f50));
     const double w = f50 - std::floor(f50);
@@ -312,8 +319,8 @@ void sonic_context(
     ctx[n][5] = q.y();
     ctx[n][6] = q.z();
     for (int j = 0; j < SONIC_NUM_ACTIONS; ++j) {
-      ctx[n][7 + SONIC_MJ_OF_IL[j]] =
-          a.q[static_cast<size_t>(j)] * (1.0 - w) + b.q[static_cast<size_t>(j)] * w;
+      ctx[n][7 + SONIC_MJ_OF_IL[j]] = a.q[static_cast<size_t>(j)] * (1.0 - w) +
+                                      b.q[static_cast<size_t>(j)] * w;
     }
   }
 }
@@ -334,10 +341,12 @@ void sonic_blend(
   std::vector<SonicFrame> merged(static_cast<size_t>(length));
   for (int f = 0; f < length; ++f) {
     const SonicFrame& old = sonic_at(self, f + self.cursor_);
-    const SonicFrame& fresh =
-        gen[static_cast<size_t>(std::clamp(f - anchor, 0, static_cast<int>(gen.size()) - 1))];
+    const SonicFrame& fresh = gen[static_cast<size_t>(
+        std::clamp(f - anchor, 0, static_cast<int>(gen.size()) - 1)
+    )];
     const double w_new = std::clamp(
-        static_cast<double>(f - anchor) / static_cast<double>(SONIC_BLEND_FRAMES),
+        static_cast<double>(f - anchor) /
+            static_cast<double>(SONIC_BLEND_FRAMES),
         0.0,
         1.0
     );
@@ -366,7 +375,6 @@ void sonic_replan(
 ) {
   double ctx[SONIC_CTX_FRAMES][SONIC_QPOS] = {};
   if (first) {
-
     for (int n = 0; n < SONIC_CTX_FRAMES; ++n) {
       ctx[n][2] = SONIC_SEED_HEIGHT;
       ctx[n][3] = 1.0;
@@ -416,11 +424,15 @@ void sonic_encoder_obs(
 
   const Eigen::Quaterniond base_inv = base_quat.conjugate();
   double ori[6];
-  sonic_ori6(base_inv * (self.to_world_ * sonic_at(self, self.cursor_).quat), ori);
+  sonic_ori6(
+      base_inv * (self.to_world_ * sonic_at(self, self.cursor_).quat),
+      ori
+  );
   for (int k = 0; k < 6; ++k) obs[595 + k] = static_cast<float>(ori[k]);
   for (int k = 0; k < SONIC_REF_FRAMES; ++k) {
     sonic_ori6(base_inv * (self.to_world_ * sonic_at(self, idx[k]).quat), ori);
-    for (int c = 0; c < 6; ++c) obs[601 + k * 6 + c] = static_cast<float>(ori[c]);
+    for (int c = 0; c < 6; ++c)
+      obs[601 + k * 6 + c] = static_cast<float>(ori[c]);
   }
 
   for (int k = 0; k < SONIC_REF_FRAMES; ++k) {
@@ -442,15 +454,22 @@ void sonic_decoder_obs(
 
   for (int f = 0; f < SONIC_HIST; ++f) {
     for (int k = 0; k < 3; ++k) {
-      obs[64 + f * 3 + k] = static_cast<float>(self.hist_gyro_[static_cast<size_t>(f)][static_cast<size_t>(k)]);
-      obs[964 + f * 3 + k] = static_cast<float>(self.hist_grav_[static_cast<size_t>(f)][static_cast<size_t>(k)]);
+      obs[64 + f * 3 + k] = static_cast<float>(
+          self.hist_gyro_[static_cast<size_t>(f)][static_cast<size_t>(k)]
+      );
+      obs[964 + f * 3 + k] = static_cast<float>(
+          self.hist_grav_[static_cast<size_t>(f)][static_cast<size_t>(k)]
+      );
     }
     for (int j = 0; j < SONIC_NUM_ACTIONS; ++j) {
       const size_t ff = static_cast<size_t>(f);
       const size_t jj = static_cast<size_t>(j);
-      obs[94 + f * SONIC_NUM_ACTIONS + j] = static_cast<float>(self.hist_q_[ff][jj]);
-      obs[384 + f * SONIC_NUM_ACTIONS + j] = static_cast<float>(self.hist_dq_[ff][jj]);
-      obs[674 + f * SONIC_NUM_ACTIONS + j] = static_cast<float>(self.hist_act_[ff][jj]);
+      obs[94 + f * SONIC_NUM_ACTIONS + j] =
+          static_cast<float>(self.hist_q_[ff][jj]);
+      obs[384 + f * SONIC_NUM_ACTIONS + j] =
+          static_cast<float>(self.hist_dq_[ff][jj]);
+      obs[674 + f * SONIC_NUM_ACTIONS + j] =
+          static_cast<float>(self.hist_act_[ff][jj]);
     }
   }
 }
@@ -477,10 +496,12 @@ void sonic_push_history(
   }
 
   self.hist_act_[now] = self.last_action_;
-  for (int k = 0; k < 3; ++k) self.hist_gyro_[now][static_cast<size_t>(k)] = rs.imu_gyro[k];
+  for (int k = 0; k < 3; ++k)
+    self.hist_gyro_[now][static_cast<size_t>(k)] = rs.imu_gyro[k];
   const Eigen::Vector3d gravity =
       quat_rot_vec(quat_conj(rs.imu_quat), Eigen::Vector3d(0.0, 0.0, -1.0));
-  for (int k = 0; k < 3; ++k) self.hist_grav_[now][static_cast<size_t>(k)] = gravity[k];
+  for (int k = 0; k < 3; ++k)
+    self.hist_grav_[now][static_cast<size_t>(k)] = gravity[k];
 }
 
 Output policy_step(
@@ -491,9 +512,8 @@ Output policy_step(
   double drive[3];
   command_from_target(in, LIMITS, self.pos_reached_, self.yaw_reached_, drive);
 
-  const Eigen::Quaterniond base(
-      rs.imu_quat[0], rs.imu_quat[1], rs.imu_quat[2], rs.imu_quat[3]
-  );
+  const Eigen::Quaterniond
+      base(rs.imu_quat[0], rs.imu_quat[1], rs.imu_quat[2], rs.imu_quat[3]);
 
   const double psi = sonic_yaw_of(self.to_world_.conjugate() * base);
   const double speed = std::hypot(drive[0], drive[1]);
@@ -501,11 +521,13 @@ Output policy_step(
   const double face_yaw = psi + drive[2] * SONIC_FACE_LEAD_S;
 
   const bool stepping = speed > SONIC_IDLE_SPEED;
-  const int mode = !stepping ? SONIC_MODE_IDLE
+  const int mode = !stepping                  ? SONIC_MODE_IDLE
                    : speed < SONIC_WALK_SPEED ? SONIC_MODE_SLOW_WALK
                                               : SONIC_MODE_WALK;
   const double move[3] = {
-      stepping ? std::cos(course) : 0.0, stepping ? std::sin(course) : 0.0, 0.0
+      stepping ? std::cos(course) : 0.0,
+      stepping ? std::sin(course) : 0.0,
+      0.0
   };
   const double face[3] = {std::cos(face_yaw), std::sin(face_yaw), 0.0};
 
@@ -517,7 +539,15 @@ Output policy_step(
     self.to_world_ = sonic_heading_of(base) *
                      sonic_heading_of(sonic_at(self, 0).quat).conjugate();
   } else if (self.ticks_ % SONIC_REPLAN_TICKS == 0) {
-    sonic_replan(self, mode, stepping ? speed : 0.0, move, face, false, nullptr);
+    sonic_replan(
+        self,
+        mode,
+        stepping ? speed : 0.0,
+        move,
+        face,
+        false,
+        nullptr
+    );
   }
 
   sonic_push_history(self, rs);
@@ -545,12 +575,15 @@ Output policy_step(
   for (int mj = 0; mj < SONIC_NUM_OWNED; ++mj) {
     const double stiffness =
         sonic_stiffness(mj) * (sonic_double_gain(mj) ? 2.0 : 1.0);
-    const double scale = 0.25 * SONIC_EFFORT[SONIC_MOTOR[mj]] / sonic_stiffness(mj);
+    const double scale =
+        0.25 * SONIC_EFFORT[SONIC_MOTOR[mj]] / sonic_stiffness(mj);
     out.q_target[mj] =
-        SONIC_DEFAULT_ANGLES[mj] + self.last_action_[static_cast<size_t>(SONIC_IL_OF_MJ[mj])] * scale;
+        SONIC_DEFAULT_ANGLES[mj] +
+        self.last_action_[static_cast<size_t>(SONIC_IL_OF_MJ[mj])] * scale;
     out.kp[mj] = static_cast<float>(stiffness);
-    out.kd[mj] =
-        static_cast<float>(sonic_damping(mj) * (sonic_double_gain(mj) ? 2.0 : 1.0));
+    out.kd[mj] = static_cast<float>(
+        sonic_damping(mj) * (sonic_double_gain(mj) ? 2.0 : 1.0)
+    );
     out.owns[mj] = true;
   }
   return out;
@@ -574,10 +607,18 @@ std::shared_ptr<Sonic> policy_make() {
       "sonic"
   );
   self->encoder_ = sonic_engine_init(
-      SONIC_ENCODER_PATH, "obs_dict", SONIC_ENC_OBS, "encoded_tokens", SONIC_TOKEN
+      SONIC_ENCODER_PATH,
+      "obs_dict",
+      SONIC_ENC_OBS,
+      "encoded_tokens",
+      SONIC_TOKEN
   );
   self->decoder_ = sonic_engine_init(
-      SONIC_DECODER_PATH, "obs_dict", SONIC_DEC_OBS, "action", SONIC_NUM_ACTIONS
+      SONIC_DECODER_PATH,
+      "obs_dict",
+      SONIC_DEC_OBS,
+      "action",
+      SONIC_NUM_ACTIONS
   );
   self->motion_.reserve(1500);
   return self;

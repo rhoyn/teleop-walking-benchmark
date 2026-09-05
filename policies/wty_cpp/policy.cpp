@@ -8,8 +8,8 @@ const int WTY_HISTORY = 5;
 
 const int WTY_NUM_TERMS = 6;
 
-const int WTY_TERM_DIM[WTY_NUM_TERMS] = {3, 3, 3, WTY_NUM_ACTIONS,
-                                         WTY_NUM_ACTIONS, WTY_NUM_ACTIONS};
+const int WTY_TERM_DIM[WTY_NUM_TERMS] =
+    {3, 3, 3, WTY_NUM_ACTIONS, WTY_NUM_ACTIONS, WTY_NUM_ACTIONS};
 
 const int WTY_FRAME = 3 + 3 + 3 + 3 * WTY_NUM_ACTIONS;
 
@@ -18,9 +18,9 @@ const int WTY_NUM_OBS = WTY_HISTORY * WTY_FRAME;
 const int WTY_FIRST_ARM_MOTOR = 15;
 
 const double WTY_DEFAULT_POS[WTY_NUM_ACTIONS] = {
-    -0.1, 0.0, 0.0,  0.3,   -0.2, 0.0, -0.1, 0.0,  0.0, 0.3,
-    -0.2, 0.0, 0.0,  0.0,   0.0,  0.0, 0.25, 0.0,  0.97, 0.15,
-    0.0,  0.0, 0.0, -0.25,  0.0,  0.97, -0.15, 0.0, 0.0
+    -0.1, 0.0, 0.0, 0.3,   -0.2, 0.0,  -0.1,  0.0, 0.0,  0.3,
+    -0.2, 0.0, 0.0, 0.0,   0.0,  0.0,  0.25,  0.0, 0.97, 0.15,
+    0.0,  0.0, 0.0, -0.25, 0.0,  0.97, -0.15, 0.0, 0.0
 };
 
 const double WTY_ACTION_SCALE = 0.25;
@@ -28,11 +28,11 @@ const double WTY_ACTION_SCALE = 0.25;
 const float WTY_ACTION_GUARD = 10.0f;
 
 const float WTY_KPS[WTY_NUM_ACTIONS] = {
-    40.1792f, 99.0984f, 40.1792f, 99.0984f, 28.5012f, 28.5012f, 40.1792f,
-    99.0984f, 40.1792f, 99.0984f, 28.5012f, 28.5012f, 40.1792f, 28.5012f,
-    28.5012f, 50.0f,    50.0f,    50.0f,    14.2506f, 14.2506f, 16.7783f,
-    16.7783f, 50.0f,    50.0f,    50.0f,    14.2506f, 14.2506f, 16.7783f,
-    16.7783f
+    40.1792f, 99.0984f, 40.1792f, 99.0984f, 28.5012f, 28.5012f,
+    40.1792f, 99.0984f, 40.1792f, 99.0984f, 28.5012f, 28.5012f,
+    40.1792f, 28.5012f, 28.5012f, 50.0f,    50.0f,    50.0f,
+    14.2506f, 14.2506f, 16.7783f, 16.7783f, 50.0f,    50.0f,
+    50.0f,    14.2506f, 14.2506f, 16.7783f, 16.7783f
 };
 
 const float WTY_KDS[WTY_NUM_ACTIONS] = {
@@ -79,10 +79,18 @@ std::shared_ptr<Engine> wty_engine_init(const std::string& model_path) {
     );
   }
   engine_expect(
-      *loaded, "obs", static_cast<size_t>(WTY_NUM_OBS), true, "wty_cpp"
+      *loaded,
+      "obs",
+      static_cast<size_t>(WTY_NUM_OBS),
+      true,
+      "wty_cpp"
   );
   engine_expect(
-      *loaded, "actions", static_cast<size_t>(WTY_NUM_ACTIONS), false, "wty_cpp"
+      *loaded,
+      "actions",
+      static_cast<size_t>(WTY_NUM_ACTIONS),
+      false,
+      "wty_cpp"
   );
   std::cout << "wty_cpp: engine ready, obs " << WTY_NUM_OBS << " action "
             << WTY_NUM_ACTIONS << " tensors "
@@ -115,8 +123,7 @@ void wty_obs_frame(
       joint_vel[j] = 0.0f;
     } else {
       joint_pos[j] = static_cast<float>(rs.motor_q[j] - WTY_DEFAULT_POS[j]);
-      joint_vel[j] =
-          static_cast<float>(rs.motor_dq[j] * WTY_JOINT_VEL_SCALE);
+      joint_vel[j] = static_cast<float>(rs.motor_dq[j] * WTY_JOINT_VEL_SCALE);
     }
     last_action[j] = p.last_action_[j];
   }
@@ -154,7 +161,9 @@ Output policy_step(
 
   Engine& engine = *self.engine_;
   std::copy(
-      self.obs_.begin(), self.obs_.end(), engine_input(engine, "obs").data.begin()
+      self.obs_.begin(),
+      self.obs_.end(),
+      engine_input(engine, "obs").data.begin()
   );
   engine_run(engine);
   const std::vector<float>& action = engine_output(engine, "actions").data;
@@ -167,9 +176,9 @@ Output policy_step(
   }
 
   for (int j = 0; j < WTY_NUM_ACTIONS; ++j) {
-    out.q_target[j] = WTY_DEFAULT_POS[j] +
-                      static_cast<double>(self.last_action_[j]) *
-                          WTY_ACTION_SCALE;
+    out.q_target[j] =
+        WTY_DEFAULT_POS[j] +
+        static_cast<double>(self.last_action_[j]) * WTY_ACTION_SCALE;
     out.kp[j] = WTY_KPS[j];
     out.kd[j] = WTY_KDS[j];
     out.owns[j] = j < WTY_FIRST_ARM_MOTOR;

@@ -4802,7 +4802,7 @@ const char* const POLICY_NAMES[] = {
     "grove",    "dm_agile",      "dm_march",
     "g1_gym",   "legged_rl_lab", "nanog1",
     "schoi",    "stepdown",      "wcompton",
-    "wty_cpp",  "zealot",   "bfm_zero"
+    "wty_cpp",  "zealot",        "bfm_zero"
 };
 
 /**

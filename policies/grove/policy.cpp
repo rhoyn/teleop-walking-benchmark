@@ -8,54 +8,13 @@ const int GROVE_NUM_ACTIONS = 14;
 
 const int GROVE_HISTORY = 5;
 
-const int GROVE_TO_MUJOCO[GROVE_NUM_JOINTS] = {
-    0,
-    6,
-    12,
-    1,
-    7,
-    13,
-    2,
-    8,
-    14,
-    3,
-    9,
-    15,
-    22,
-    4,
-    10,
-    16,
-    23,
-    5,
-    11,
-    17,
-    24,
-    18,
-    25,
-    19,
-    26,
-    20,
-    27,
-    21,
-    28
-};
+const int GROVE_TO_MUJOCO[GROVE_NUM_JOINTS] = {0,  6,  12, 1,  7,  13, 2,  8,
+                                               14, 3,  9,  15, 22, 4,  10, 16,
+                                               23, 5,  11, 17, 24, 18, 25, 19,
+                                               26, 20, 27, 21, 28};
 
-const int GROVE_ACTION_TO_MUJOCO[GROVE_NUM_ACTIONS] = {
-    0,
-    6,
-    1,
-    7,
-    13,
-    2,
-    8,
-    14,
-    3,
-    9,
-    4,
-    10,
-    5,
-    11
-};
+const int GROVE_ACTION_TO_MUJOCO[GROVE_NUM_ACTIONS] =
+    {0, 6, 1, 7, 13, 2, 8, 14, 3, 9, 4, 10, 5, 11};
 
 const int GROVE_ACTION_TO_OBS[GROVE_NUM_ACTIONS] =
     {0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 17, 18};
@@ -185,7 +144,6 @@ void grove_prime_history(
       cmd_hist[h * 3 + k] = static_cast<float>(command[k]);
     }
     for (int a = 0; a < GROVE_NUM_ACTIONS; ++a) {
-
       const int j = GROVE_ACTION_TO_OBS[a];
       pos_hist[h * GROVE_NUM_ACTIONS + a] =
           joint_pos[j] - static_cast<float>(GROVE_DEFAULT_POS[a]);

@@ -10,9 +10,8 @@ const int DM_NUM_TERMS = 7;
 
 const int DM_GAIT_DIM = 2;
 
-const int DM_TERM_DIM[DM_NUM_TERMS] = {
-    3, 3, 3, DM_NUM_ACTIONS, DM_NUM_ACTIONS, DM_NUM_ACTIONS, DM_GAIT_DIM
-};
+const int DM_TERM_DIM[DM_NUM_TERMS] =
+    {3, 3, 3, DM_NUM_ACTIONS, DM_NUM_ACTIONS, DM_NUM_ACTIONS, DM_GAIT_DIM};
 
 const int DM_NUM_OBS =
     DM_HISTORY * (3 + 3 + 3 + 3 * DM_NUM_ACTIONS + DM_GAIT_DIM);
@@ -35,18 +34,18 @@ const double DM_TARGET_MAX = 1.0;
 
 const float DM_ACTION_CLIP = 10.0f;
 
-const float DM_KPS[DM_NUM_ACTIONS] = {
-    100.0f, 100.0f, 100.0f, 150.0f, 40.0f, 40.0f, 100.0f, 100.0f,
-    100.0f, 150.0f, 40.0f,  40.0f,  200.0f, 40.0f, 40.0f, 40.0f,
-    40.0f,  40.0f,  40.0f,  40.0f,  40.0f,  40.0f, 40.0f, 40.0f,
-    40.0f,  40.0f,  40.0f,  40.0f,  40.0f
-};
+const float DM_KPS[DM_NUM_ACTIONS] = {100.0f, 100.0f, 100.0f, 150.0f, 40.0f,
+                                      40.0f,  100.0f, 100.0f, 100.0f, 150.0f,
+                                      40.0f,  40.0f,  200.0f, 40.0f,  40.0f,
+                                      40.0f,  40.0f,  40.0f,  40.0f,  40.0f,
+                                      40.0f,  40.0f,  40.0f,  40.0f,  40.0f,
+                                      40.0f,  40.0f,  40.0f,  40.0f};
 
-const float DM_KDS[DM_NUM_ACTIONS] = {
-    2.0f, 2.0f, 2.0f, 4.0f, 2.0f, 2.0f, 2.0f, 2.0f, 2.0f, 4.0f,
-    2.0f, 2.0f, 5.0f, 5.0f, 5.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-    1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f
-};
+const float DM_KDS[DM_NUM_ACTIONS] = {2.0f, 2.0f, 2.0f, 4.0f, 2.0f, 2.0f,
+                                      2.0f, 2.0f, 2.0f, 4.0f, 2.0f, 2.0f,
+                                      5.0f, 5.0f, 5.0f, 1.0f, 1.0f, 1.0f,
+                                      1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                                      1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 
 const double DM_ANG_VEL_SCALE = 0.2;
 

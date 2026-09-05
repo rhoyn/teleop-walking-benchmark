@@ -8,34 +8,34 @@ const int LRL_FIRST_ARM_MOTOR = 15;
 
 const std::string LRL_MODEL_PATH = "policies/legged_rl_lab/model.onnx";
 
-const int LRL_MOTOR_OF_ISAAC[LRL_NUM_ACTIONS] = {
-    0,  6,  12, 1,  7,  13, 2,  8,  14, 3,  9,  15, 22, 4, 10,
-    16, 23, 5,  11, 17, 24, 18, 25, 19, 26, 20, 27, 21, 28
-};
+const int LRL_MOTOR_OF_ISAAC[LRL_NUM_ACTIONS] = {0,  6,  12, 1,  7,  13, 2,  8,
+                                                 14, 3,  9,  15, 22, 4,  10, 16,
+                                                 23, 5,  11, 17, 24, 18, 25, 19,
+                                                 26, 20, 27, 21, 28};
 
-const int LRL_ISAAC_OF_MOTOR[LRL_NUM_ACTIONS] = {
-    0,  3,  6,  9,  13, 17, 1,  4,  7,  10, 14, 18, 2, 5, 8,
-    11, 15, 19, 21, 23, 25, 27, 12, 16, 20, 22, 24, 26, 28
-};
+const int LRL_ISAAC_OF_MOTOR[LRL_NUM_ACTIONS] = {0,  3,  6,  9,  13, 17, 1,  4,
+                                                 7,  10, 14, 18, 2,  5,  8,  11,
+                                                 15, 19, 21, 23, 25, 27, 12, 16,
+                                                 20, 22, 24, 26, 28};
 
 const double LRL_DEFAULT_POS[LRL_NUM_ACTIONS] = {
-    -0.1,  -0.1,  0.0,  0.0,  0.0,  0.0, 0.0,  0.0,  0.0,  0.3,
-    0.3,   0.3,   0.3,  -0.2, -0.2, 0.25, -0.25, 0.0, 0.0,  0.0,
-    0.0,   0.97,  0.97, 0.15, -0.15, 0.0, 0.0,  0.0,  0.0
+    -0.1, -0.1, 0.0,  0.0,  0.0,   0.0,  0.0,   0.0, 0.0, 0.3,
+    0.3,  0.3,  0.3,  -0.2, -0.2,  0.25, -0.25, 0.0, 0.0, 0.0,
+    0.0,  0.97, 0.97, 0.15, -0.15, 0.0,  0.0,   0.0, 0.0
 };
 
-const float LRL_KPS[LRL_NUM_ACTIONS] = {
-    100.0f, 100.0f, 200.0f, 100.0f, 100.0f, 40.0f, 100.0f, 100.0f, 40.0f,
-    150.0f, 150.0f, 40.0f,  40.0f,  40.0f,  40.0f, 40.0f,  40.0f,  40.0f,
-    40.0f,  40.0f,  40.0f,  40.0f,  40.0f,  40.0f, 40.0f,  40.0f,  40.0f,
-    40.0f,  40.0f
-};
+const float LRL_KPS[LRL_NUM_ACTIONS] = {100.0f, 100.0f, 200.0f, 100.0f, 100.0f,
+                                        40.0f,  100.0f, 100.0f, 40.0f,  150.0f,
+                                        150.0f, 40.0f,  40.0f,  40.0f,  40.0f,
+                                        40.0f,  40.0f,  40.0f,  40.0f,  40.0f,
+                                        40.0f,  40.0f,  40.0f,  40.0f,  40.0f,
+                                        40.0f,  40.0f,  40.0f,  40.0f};
 
-const float LRL_KDS[LRL_NUM_ACTIONS] = {
-    2.0f, 2.0f, 5.0f, 2.0f, 2.0f, 5.0f, 2.0f, 2.0f, 5.0f, 4.0f,
-    4.0f, 1.0f, 1.0f, 2.0f, 2.0f, 1.0f, 1.0f, 2.0f, 2.0f, 1.0f,
-    1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f
-};
+const float LRL_KDS[LRL_NUM_ACTIONS] = {2.0f, 2.0f, 5.0f, 2.0f, 2.0f, 5.0f,
+                                        2.0f, 2.0f, 5.0f, 4.0f, 4.0f, 1.0f,
+                                        1.0f, 2.0f, 2.0f, 1.0f, 1.0f, 2.0f,
+                                        2.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                                        1.0f, 1.0f, 1.0f, 1.0f, 1.0f};
 
 const double LRL_ANG_VEL_SCALE = 0.2;
 const double LRL_DOF_POS_SCALE = 1.0;
@@ -99,7 +99,9 @@ void lrl_build_obs(
     const LeggedRlLab& self,
     const RobotState& rs,
     const double drive[3],
-    std::array<float, LRL_NUM_OBS>& obs
+    std::array<
+        float,
+        LRL_NUM_OBS>& obs
 ) {
   const Eigen::Vector3d gravity_dir =
       quat_rot_vec(quat_conj(rs.imu_quat), Eigen::Vector3d(0.0, 0.0, -1.0));

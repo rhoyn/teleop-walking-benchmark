@@ -408,18 +408,14 @@ std::vector<std::string> ordered(
         );
         if (pa != pb) return pa > pb;
 
-        const long sa =
-            std::lround(ta.survival / static_cast<double>(ta.runs));
-        const long sb =
-            std::lround(tb.survival / static_cast<double>(tb.runs));
+        const long sa = std::lround(ta.survival / static_cast<double>(ta.runs));
+        const long sb = std::lround(tb.survival / static_cast<double>(tb.runs));
         if (sa != sb) return sa > sb;
 
         if ((ta.targets > 0) != (tb.targets > 0)) return ta.targets > 0;
         if (ta.targets > 0) {
-          const long ea =
-              std::lround(ta.pos / static_cast<double>(ta.targets));
-          const long eb =
-              std::lround(tb.pos / static_cast<double>(tb.targets));
+          const long ea = std::lround(ta.pos / static_cast<double>(ta.targets));
+          const long eb = std::lround(tb.pos / static_cast<double>(tb.targets));
           if (ea != eb) return ea < eb;
         }
         return a < b;

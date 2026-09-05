@@ -46,19 +46,18 @@ const double BFM_ACTION_RESCALE = 5.0;
 
 const double BFM_ACTION_CLIP = 5.0;
 
-const double BFM_DEFAULT_POS[BFM_NUM_JOINTS] = {
-    -0.1, 0.0, 0.0, 0.3, -0.2, 0.0, -0.1, 0.0, 0.0, 0.3,
-    -0.2, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0,  0.0, 0.0, 0.0,
-    0.0,  0.0, 0.0, 0.0, 0.0,  0.0, 0.0,  0.0, 0.0
-};
+const double BFM_DEFAULT_POS[BFM_NUM_JOINTS] = {-0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+                                                -0.1, 0.0, 0.0, 0.3, -0.2, 0.0,
+                                                0.0,  0.0, 0.0, 0.0, 0.0,  0.0,
+                                                0.0,  0.0, 0.0, 0.0, 0.0,  0.0,
+                                                0.0,  0.0, 0.0, 0.0, 0.0};
 
 const double BFM_ACTION_SCALE[BFM_NUM_JOINTS] = {
-    0.222001498914, 0.22200157,     0.54754699, 0.35066156, 0.43857802,
-    0.43857802,     0.222001498914, 0.22200157, 0.54754699, 0.35066156,
-    0.43857802,     0.43857802,     0.54754699, 0.43857802, 0.43857802,
-    0.43857802,     0.43857802,     0.43857802, 0.43857802, 0.43857802,
-    0.07450086,     0.07466888,     0.43857802, 0.43857802, 0.43857802,
-    0.43857802,     0.43857802,     0.07450086, 0.07450086
+    0.222001498914, 0.22200157, 0.54754699, 0.35066156, 0.43857802, 0.43857802,
+    0.222001498914, 0.22200157, 0.54754699, 0.35066156, 0.43857802, 0.43857802,
+    0.54754699,     0.43857802, 0.43857802, 0.43857802, 0.43857802, 0.43857802,
+    0.43857802,     0.43857802, 0.07450086, 0.07466888, 0.43857802, 0.43857802,
+    0.43857802,     0.43857802, 0.43857802, 0.07450086, 0.07450086
 };
 
 const float BFM_KPS[BFM_NUM_JOINTS] = {
@@ -70,11 +69,10 @@ const float BFM_KPS[BFM_NUM_JOINTS] = {
 };
 
 const float BFM_KDS[BFM_NUM_JOINTS] = {
-    6.3088f, 6.3088f, 2.5579f, 6.3088f, 1.8145f, 1.8145f, 6.3088f,
-    6.3088f, 2.5579f, 6.3088f, 1.8145f, 1.8145f, 2.5579f, 1.8145f,
-    1.8145f, 0.9072f, 0.9072f, 0.9072f, 0.9072f, 0.9072f, 1.0681f,
-    1.0681f, 0.9072f, 0.9072f, 0.9072f, 0.9072f, 0.9072f, 1.0681f,
-    1.0681f
+    6.3088f, 6.3088f, 2.5579f, 6.3088f, 1.8145f, 1.8145f, 6.3088f, 6.3088f,
+    2.5579f, 6.3088f, 1.8145f, 1.8145f, 2.5579f, 1.8145f, 1.8145f, 0.9072f,
+    0.9072f, 0.9072f, 0.9072f, 0.9072f, 1.0681f, 1.0681f, 0.9072f, 0.9072f,
+    0.9072f, 0.9072f, 0.9072f, 1.0681f, 1.0681f
 };
 
 const int BFM_Z_STAND = 0;
@@ -134,8 +132,8 @@ struct BfmZero {
 };
 
 std::vector<float> bfm_latents_load(const std::string& path) {
-  const size_t want = static_cast<size_t>(BFM_NUM_LATENTS) *
-                      static_cast<size_t>(BFM_Z_DIM);
+  const size_t want =
+      static_cast<size_t>(BFM_NUM_LATENTS) * static_cast<size_t>(BFM_Z_DIM);
   std::ifstream file(path, std::ios::binary | std::ios::ate);
   if (!file) {
     throw std::runtime_error("bfm_zero: cannot open latent file " + path);
@@ -157,7 +155,9 @@ std::vector<float> bfm_latents_load(const std::string& path) {
   }
   for (size_t i = 0; i < want; ++i) {
     if (!std::isfinite(latents[i])) {
-      throw std::runtime_error("bfm_zero: latent file holds a non-finite value");
+      throw std::runtime_error(
+          "bfm_zero: latent file holds a non-finite value"
+      );
     }
   }
   return latents;
@@ -214,7 +214,10 @@ int bfm_latent_for_command(const double drive[3]) {
   return BFM_Z_BACK_SLOW;
 }
 
-void bfm_latent_update(BfmZero& self, const double drive[3]) {
+void bfm_latent_update(
+    BfmZero& self,
+    const double drive[3]
+) {
   const int want = bfm_latent_for_command(drive);
   if (want == self.latent_) {
     self.pending_ = want;
@@ -233,7 +236,11 @@ void bfm_latent_update(BfmZero& self, const double drive[3]) {
 }
 
 template <typename Buffer>
-void bfm_history_push(Buffer& buffer, const float* frame, int width) {
+void bfm_history_push(
+    Buffer& buffer,
+    const float* frame,
+    int width
+) {
   const int total = static_cast<int>(buffer.size());
   for (int i = total - width - 1; i >= 0; --i) {
     buffer[static_cast<size_t>(i + width)] = buffer[static_cast<size_t>(i)];
@@ -314,7 +321,8 @@ Output policy_step(
 
   for (int j = 0; j < BFM_NUM_JOINTS; ++j) {
     const double scaled = std::clamp(
-        BFM_ACTION_RESCALE * static_cast<double>(action[static_cast<size_t>(j)]),
+        BFM_ACTION_RESCALE *
+            static_cast<double>(action[static_cast<size_t>(j)]),
         -BFM_ACTION_CLIP,
         BFM_ACTION_CLIP
     );

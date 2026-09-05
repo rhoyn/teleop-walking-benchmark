@@ -11,11 +11,9 @@ const int NANOG1_NUM_LEG = 12;
 const int NANOG1_STATE = 384;
 
 const double NANOG1_HOME_ANGLES[NANOG1_NUM_ACTIONS] = {
-    -0.10, 0.00,  0.00, 0.30, -0.20, 0.00,
-    -0.10, 0.00,  0.00, 0.30, -0.20, 0.00,
-    0.00,  0.00,  0.00,
-    0.20,  0.20,  0.00, 1.28, 0.00,  0.00, 0.00,
-    0.20,  -0.20, 0.00, 1.28, 0.00,  0.00, 0.00
+    -0.10, 0.00, 0.00, 0.30,  -0.20, 0.00, -0.10, 0.00, 0.00, 0.30,
+    -0.20, 0.00, 0.00, 0.00,  0.00,  0.20, 0.20,  0.00, 1.28, 0.00,
+    0.00,  0.00, 0.20, -0.20, 0.00,  1.28, 0.00,  0.00, 0.00
 };
 
 const double NANOG1_CTRL_LO[NANOG1_NUM_LEG] = {
@@ -142,7 +140,6 @@ Output policy_step(
     engine_run(e);
     const std::vector<float>& action = engine_output(e, "action").data;
     for (int i = 0; i < NANOG1_NUM_ACTIONS; ++i) {
-
       self.last_action_[i] = i < NANOG1_NUM_LEG
                                  ? std::clamp(
                                        action[i],

@@ -6,31 +6,29 @@ const int SCHOI_NUM_OBS = 47;
 
 const std::string SCHOI_MODEL_PATH = "policies/schoi/model.onnx";
 
-const int SCHOI_MUJOCO_FROM_ISAAC[SCHOI_NUM_ACTIONS] = {
-    0,
-    6,
-    1,
-    7,
-    2,
-    8,
-    3,
-    9,
-    4,
-    10,
-    5,
-    11
+const int SCHOI_MUJOCO_FROM_ISAAC[SCHOI_NUM_ACTIONS] =
+    {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11};
+
+const double SCHOI_DEFAULT_POS[SCHOI_NUM_ACTIONS] =
+    {-0.10, 0.0, 0.0, 0.3, -0.2, 0.0, -0.10, 0.0, 0.0, 0.3, -0.2, 0.0};
+
+const float SCHOI_KPS[SCHOI_NUM_ACTIONS] = {
+    100.0f,
+    100.0f,
+    100.0f,
+    150.0f,
+    40.0f,
+    40.0f,
+    100.0f,
+    100.0f,
+    100.0f,
+    150.0f,
+    40.0f,
+    40.0f
 };
 
-const double SCHOI_DEFAULT_POS[SCHOI_NUM_ACTIONS] = {-0.10, 0.0, 0.0, 0.3,
-                                                     -0.2,  0.0, -0.10, 0.0,
-                                                     0.0,   0.3, -0.2,  0.0};
-
-const float SCHOI_KPS[SCHOI_NUM_ACTIONS] = {100.0f, 100.0f, 100.0f, 150.0f,
-                                            40.0f,  40.0f,  100.0f, 100.0f,
-                                            100.0f, 150.0f, 40.0f,  40.0f};
-
-const float SCHOI_KDS[SCHOI_NUM_ACTIONS] = {3.0f, 3.0f, 3.0f, 5.0f, 3.0f, 3.0f,
-                                            3.0f, 3.0f, 3.0f, 5.0f, 3.0f, 3.0f};
+const float SCHOI_KDS[SCHOI_NUM_ACTIONS] =
+    {3.0f, 3.0f, 3.0f, 5.0f, 3.0f, 3.0f, 3.0f, 3.0f, 3.0f, 5.0f, 3.0f, 3.0f};
 
 const double SCHOI_ANG_VEL_SCALE = 0.5;
 
@@ -134,7 +132,8 @@ Output policy_step(
 
   const double cmd_norm = std::sqrt(
       static_cast<double>(obs[6]) * obs[6] +
-      static_cast<double>(obs[7]) * obs[7] + static_cast<double>(obs[8]) * obs[8]
+      static_cast<double>(obs[7]) * obs[7] +
+      static_cast<double>(obs[8]) * obs[8]
   );
   if (cmd_norm >= SCHOI_GAIT_CMD_DEADBAND) {
     obs[45] = static_cast<float>(std::sin(self.gait_phase_ * 2.0 * M_PI));

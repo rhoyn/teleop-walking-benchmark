@@ -118,7 +118,6 @@ void handoff_build_frame(
         float,
         HANDOFF_FRAME_DIM>& frame
 ) {
-
   const double cmd_norm =
       std::sqrt(cmd[0] * cmd[0] + cmd[1] * cmd[1] + cmd[2] * cmd[2]);
   const bool stationary = cmd_norm < HANDOFF_STAND_VEL_THRESHOLD;

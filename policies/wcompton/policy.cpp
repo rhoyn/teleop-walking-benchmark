@@ -21,25 +21,22 @@ const int WC_ISAAC_TO_MUJOCO[WC_NUM_ACTIONS] = {
 };
 
 const double WC_DEFAULT_ISAAC[WC_NUM_ACTIONS] = {
-    -0.20, -0.20, 0.00, 0.00, 0.00, 0.35,  0.35,
-    0.00,  0.00,  0.27, -0.27, 0.42, 0.42, 0.00,
-    0.00,  -0.23, -0.23, 0.87, 0.87, 0.00, 0.00
+    -0.20, -0.20, 0.00, 0.00, 0.00,  0.35,  0.35, 0.00, 0.00, 0.27, -0.27,
+    0.42,  0.42,  0.00, 0.00, -0.23, -0.23, 0.87, 0.87, 0.00, 0.00
 };
 
 const float WC_KPS_ISAAC[WC_NUM_ACTIONS] = {
-    40.179238f, 40.179238f, 28.501246f, 99.098428f, 99.098428f,
-    14.250623f, 14.250623f, 40.179238f, 40.179238f, 14.250623f,
-    14.250623f, 99.098428f, 99.098428f, 14.250623f, 14.250623f,
-    28.501246f, 28.501246f, 14.250623f, 14.250623f, 28.501246f,
-    28.501246f
+    40.179238f, 40.179238f, 28.501246f, 99.098428f, 99.098428f, 14.250623f,
+    14.250623f, 40.179238f, 40.179238f, 14.250623f, 14.250623f, 99.098428f,
+    99.098428f, 14.250623f, 14.250623f, 28.501246f, 28.501246f, 14.250623f,
+    14.250623f, 28.501246f, 28.501246f
 };
 
 const float WC_KDS_ISAAC[WC_NUM_ACTIONS] = {
-    2.557890f, 2.557890f, 1.814446f, 6.308802f, 6.308802f,
-    0.907223f, 0.907223f, 2.557890f, 2.557890f, 0.907223f,
-    0.907223f, 6.308802f, 6.308802f, 0.907223f, 0.907223f,
-    1.814446f, 1.814446f, 0.907223f, 0.907223f, 1.814446f,
-    1.814446f
+    2.557890f, 2.557890f, 1.814446f, 6.308802f, 6.308802f, 0.907223f,
+    0.907223f, 2.557890f, 2.557890f, 0.907223f, 0.907223f, 6.308802f,
+    6.308802f, 0.907223f, 0.907223f, 1.814446f, 1.814446f, 0.907223f,
+    0.907223f, 1.814446f, 1.814446f
 };
 
 const double WC_ACTION_SCALE = 0.5;
@@ -105,7 +102,10 @@ std::vector<float> wc_engine_run(
   return engine_run_single(s, obs.data(), obs.size());
 }
 
-std::array<float, WC_NUM_OBS> wc_build_obs(
+std::array<
+    float,
+    WC_NUM_OBS>
+wc_build_obs(
     const Wcompton& self,
     const RobotState& rs,
     const double cmd[3],
@@ -158,8 +158,8 @@ Output policy_step(
   for (int i = 0; i < WC_NUM_ACTIONS; ++i) {
     const int motor = WC_ISAAC_TO_MUJOCO[i];
     if (motor >= WC_FIRST_ARM_MOTOR) continue;
-    out.q_target[motor] = WC_DEFAULT_ISAAC[i] +
-                          static_cast<double>(action[i]) * WC_ACTION_SCALE;
+    out.q_target[motor] =
+        WC_DEFAULT_ISAAC[i] + static_cast<double>(action[i]) * WC_ACTION_SCALE;
     out.kp[motor] = WC_KPS_ISAAC[i];
     out.kd[motor] = WC_KDS_ISAAC[i];
     out.owns[motor] = true;

@@ -24,7 +24,8 @@ const double STEPDOWN_CONTROL_DT = 0.02;
 const float STEPDOWN_KPS[STEPDOWN_NUM_LEG] =
     {100, 100, 100, 150, 40, 40, 100, 100, 100, 150, 40, 40};
 
-const float STEPDOWN_KDS[STEPDOWN_NUM_LEG] = {2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2};
+const float STEPDOWN_KDS[STEPDOWN_NUM_LEG] =
+    {2, 2, 2, 4, 2, 2, 2, 2, 2, 4, 2, 2};
 
 const double STEPDOWN_ANG_VEL_SCALE = 0.25;
 

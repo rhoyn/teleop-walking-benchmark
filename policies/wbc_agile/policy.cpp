@@ -8,52 +8,13 @@ const int AGILE_NUM_ACTIONS = 12;
 
 const int AGILE_HISTORY = 5;
 
-const int AGILE_TO_MUJOCO[AGILE_NUM_JOINTS] = {
-    0,
-    6,
-    12,
-    1,
-    7,
-    13,
-    2,
-    8,
-    14,
-    3,
-    9,
-    15,
-    22,
-    4,
-    10,
-    16,
-    23,
-    5,
-    11,
-    17,
-    24,
-    18,
-    25,
-    19,
-    26,
-    20,
-    27,
-    21,
-    28
-};
+const int AGILE_TO_MUJOCO[AGILE_NUM_JOINTS] = {0,  6,  12, 1,  7,  13, 2,  8,
+                                               14, 3,  9,  15, 22, 4,  10, 16,
+                                               23, 5,  11, 17, 24, 18, 25, 19,
+                                               26, 20, 27, 21, 28};
 
-const int AGILE_LEG_TO_MUJOCO[AGILE_NUM_ACTIONS] = {
-    0,
-    6,
-    1,
-    7,
-    2,
-    8,
-    3,
-    9,
-    4,
-    10,
-    5,
-    11
-};
+const int AGILE_LEG_TO_MUJOCO[AGILE_NUM_ACTIONS] =
+    {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11};
 
 const double AGILE_DEFAULT_POS[AGILE_NUM_JOINTS] = {
     -0.1, -0.1, 0.0, 0.0,  0.0,  0.0, 0.0, 0.0, 0.0, 0.3,
