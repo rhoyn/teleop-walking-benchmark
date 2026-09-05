@@ -14,6 +14,25 @@ of walking — a policy is judged on whether it can absorb a hit it never saw
 coming and get back on the tour, not only on how neatly it tracks a target
 while nothing is going wrong.
 
+**The arms are not the policy's to use.** This is a benchmark for a walking
+policy you sit *underneath* while you drive the upper body yourself, so every
+candidate is scored on the same 15 lower-body joints — twelve in the legs, three
+in the waist — and the 14 arm joints are held at `DEFAULT_ANGLES` on shared
+gains for the whole tour. Nothing a policy does can move them, and nothing it
+does can borrow them.
+
+That is harder than the alternative, and deliberately so. A humanoid's arms are
+a real part of how it stays upright: swing them and you can shed momentum a fall
+would otherwise keep. Take them away and a policy has to hold its balance on its
+legs alone. But an operator teleoperating the robot is *using* those arms to do
+a task, and the walking policy underneath cannot make plans that depend on them
+— a controller that needs to windmill to stay standing is a controller that
+falls the moment its operator reaches for a door handle. Holding the arms still
+is not a handicap the benchmark imposes for difficulty's sake; it is the
+condition the policy will actually run in. That it also makes the task harder is
+the point rather than the cost. `clobot` is the extreme case and is discussed
+below.
+
 ![The field at twenty-seven seconds in: thirteen tiles, one policy each and named beside it, most of the humanoids already down with the orange punch cylinder still resting where it hit them, a few still on their feet and tracking the next waypoint](assets/preview.jpg)
 
 https://github.com/user-attachments/assets/161f3784-ec7e-44b6-9856-8ce661bb295d
