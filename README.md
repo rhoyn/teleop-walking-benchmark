@@ -1,5 +1,7 @@
 # teleop-walking-benchmark
 
+Blog post: [Stable walk](https://rhoyn.com/stable-walk)
+
 Thirteen open-source Unitree G1 walking policies ported to one C++ interface and
 scored against the same waypoint tour in MuJoCo. Twelve of the sixteen
 checkpoints are committed under `policies/`; `./download_weights.sh` pulls the
