@@ -162,6 +162,10 @@ refuses a download that does not match it.
     Cast at each of those five tensors restores the original inside the graph
     and no weight is touched
     https://huggingface.co/nvidia/GEAR-SONIC
+    the checkpoints are released on Hugging Face only; the code that trains and
+    deploys them is NVlabs/GR00T-WholeBodyControl, the same repository gr00t_wbc
+    comes from
+    https://github.com/NVlabs/GR00T-WholeBodyControl
 
   stepdown  policies/stepdown/model.pt  3c3d  NONE DECLARED  ./download_weights.sh
   stepdown  policies/stepdown/model.onnx  2030  NONE DECLARED  ./export_onnx.py, from model.pt
@@ -188,6 +192,9 @@ refuses a download that does not match it.
   zealot  policies/zealot/model.onnx  fd17  Apache-2.0  committed
     haixuantao/zealot-g1-locomotion, the velocity-v28 run
     https://huggingface.co/haixuantao/zealot-g1-locomotion
+    trained in haixuanTao/zealot, the author's own training repository, which
+    the model card names but which ships no checkpoint
+    https://github.com/haixuanTao/zealot
 
 Four flags worth reading twice:
 
@@ -218,7 +225,12 @@ Four flags worth reading twice:
   record and pass on to you. nvidia/GEAR-SONIC carries the same three files
   byte for byte, identical sha256, and states the terms plainly: Apache-2.0
   for the code, NVIDIA Open Model for the checkpoints, commercial use
-  permitted with attribution. That is what the rows above record.
+  permitted with attribution. That is what the rows above record. The code
+  those terms cover is NVlabs/GR00T-WholeBodyControl, which the model card
+  is a deployment guide for; sonic releases no repository of its own, so it
+  and gr00t_wbc share one upstream codebase and differ only in checkpoint.
+
+  https://github.com/NVlabs/GR00T-WholeBodyControl
 
 gr00t_wbc, the candidate that wins the campaign, is NVIDIA Open Model. If
 licence terms decide your build, openwbt (Apache-2.0) is the most permissive
