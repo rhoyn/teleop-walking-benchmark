@@ -74,6 +74,11 @@ names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 | `stepdown` | **0/0 %** | 95 cm / 63° | - | - |
 | ~~`clobot_with_arms`~~\*\* | ~~**9/5 %**~~ | ~~50 cm / 20°~~ | - | - |
 
+`gr00t_wbc` is HOMIE v2, not an independent policy family. Its author
+developed it at GEAR as the successor to `homie`, with substantial
+optimisations across the stack, so first and third place here are the same
+lineage. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
+
 \*\* Unranked, because it is `clobot` given all 29 joints instead of 15.
 
 ## MuJoCo vs Isaac Sim engine: PhysX
