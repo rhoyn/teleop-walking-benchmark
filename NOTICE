@@ -174,8 +174,10 @@ refuses a download that does not match it.
     https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety
 
   wbc_agile  policies/wbc_agile/model.onnx  f9a8  Apache-2.0  committed
-    nvidia-isaac/WBC-AGILE; the repository is dual-licensed, but the BSD-3-Clause
-    half covers only third_party/rsl_rl/patches/ and not this checkpoint
+    nvidia-isaac/WBC-AGILE, the Velocity-Height-G1-History-v0 LEAPP export --
+    the identity its maintainer confirmed against this file's sha256; the
+    repository is dual-licensed, but the BSD-3-Clause half covers only
+    third_party/rsl_rl/patches/ and not this checkpoint
     https://github.com/nvidia-isaac/WBC-AGILE
 
   wcompton  policies/wcompton/model.onnx  134a  NONE DECLARED  not shipped, upstream gone
