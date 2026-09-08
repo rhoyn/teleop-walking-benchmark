@@ -670,6 +670,7 @@ void engine_run(
 #include "policies/holosoma/policy.cpp"
 #include "policies/homie/policy.cpp"
 #include "policies/legged_rl_lab/policy.cpp"
+#include "policies/mimic_lite/policy.cpp"
 #include "policies/nanog1/policy.cpp"
 #include "policies/openwbt/policy.cpp"
 #include "policies/rl_gym/policy.cpp"
@@ -688,12 +689,22 @@ void engine_run(
 namespace {
 
 const char* const NAMES[] = {
-    "gr00t_wbc",        "amo",           "asap",         "bfm_zero", "clobot",
-    "clobot_with_arms", "decoupled_wbc", "dm_agile",     "dm_march", "falcon",
-    "g1_gym",           "grove",         "handoff",      "holosoma", "homie",
-    "legged_rl_lab",    "nanog1",        "openwbt",      "rl_gym",   "rl_lab",
-    "rl_mjlab",         "robomimic",     "run_residual", "schoi",    "sonic",
-    "stepdown",         "wbc_agile",     "wcompton",     "wty_cpp",  "zealot",
+    "gr00t_wbc",     "amo",
+    "asap",          "bfm_zero",
+    "clobot",        "clobot_with_arms",
+    "decoupled_wbc", "dm_agile",
+    "dm_march",      "falcon",
+    "g1_gym",        "grove",
+    "handoff",       "handoff_with_arms",
+    "holosoma",      "homie",
+    "legged_rl_lab", "mimic_lite",
+    "nanog1",        "openwbt",
+    "rl_gym",        "rl_lab",
+    "rl_mjlab",      "robomimic",
+    "run_residual",  "schoi",
+    "sonic",         "stepdown",
+    "wbc_agile",     "wcompton",
+    "wty_cpp",       "zealot",
 };
 
 }
@@ -717,9 +728,12 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
   if (name == "g1_gym") return std::make_unique<g1_gym::Policy>();
   if (name == "grove") return std::make_unique<grove::Policy>();
   if (name == "handoff") return std::make_unique<handoff::Policy>();
+  if (name == "handoff_with_arms")
+    return std::make_unique<handoff::WithArmsPolicy>();
   if (name == "holosoma") return std::make_unique<holosoma::Policy>();
   if (name == "homie") return std::make_unique<homie::Policy>();
   if (name == "legged_rl_lab") return std::make_unique<legged_rl_lab::Policy>();
+  if (name == "mimic_lite") return std::make_unique<mimic_lite::Policy>();
   if (name == "nanog1") return std::make_unique<nanog1::Policy>();
   if (name == "openwbt") return std::make_unique<openwbt::Policy>();
   if (name == "rl_gym") return std::make_unique<rl_gym::Policy>();

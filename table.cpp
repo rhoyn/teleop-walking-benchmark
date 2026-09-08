@@ -20,7 +20,17 @@ inline constexpr std::array<const char*, 5> GROUPS =
 inline constexpr int FLOOR_NUMERATOR = 1;
 inline constexpr int FLOOR_DENOMINATOR = 5;
 
-inline constexpr const char* UNRANKED = "clobot_with_arms";
+inline constexpr std::array<const char*, 2> UNRANKED = {
+    "clobot_with_arms",
+    "handoff_with_arms"
+};
+
+inline bool is_unranked(const std::string& name) {
+  for (const char* u : UNRANKED) {
+    if (name == u) return true;
+  }
+  return false;
+}
 
 struct Totals {
   long runs = 0;
@@ -265,7 +275,7 @@ std::vector<std::string> ordered(
       names.begin(),
       names.end(),
       [&totals](const std::string& a, const std::string& b) {
-        if ((a == UNRANKED) != (b == UNRANKED)) return b == UNRANKED;
+        if (is_unranked(a) != is_unranked(b)) return is_unranked(b);
         const Totals& ta = totals.at(a);
         const Totals& tb = totals.at(b);
 
@@ -319,7 +329,7 @@ std::string row(
       cell(t.walk_v, t.finished, t.runs, 0, "")
   };
 
-  const bool unranked = name == UNRANKED;
+  const bool unranked = is_unranked(name);
   std::ostringstream out;
   out << "| " << (unranked ? "~~`" + name + "`~~\\*\\*" : "`" + name + "`");
   for (size_t i = 0; i < cells.size(); ++i) {

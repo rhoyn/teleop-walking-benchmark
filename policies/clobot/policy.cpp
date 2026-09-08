@@ -56,7 +56,7 @@ const float KDS[POLICY_NUM_MOTOR] = {2.56f,  6.31f,  2.56f,  6.31f,  1.81f,
                                      1.07f,  1.07f,  0.907f, 0.907f, 0.907f,
                                      0.907f, 0.907f, 1.07f,  1.07f};
 
-const policy_api::Limits LIMITS = {-0.5, 1.0, 0.17, 0.7, 0.0};
+const policy_api::Limits LIMITS = {-0.5, 1.0, 0.5, 0.7, 0.0};
 
 __global__ void k_clobot_obs(
     const float* __restrict__ motor_q,
@@ -144,8 +144,8 @@ __global__ void k_clobot_act(
 
   for (int j = 0; j < POLICY_NUM_MOTOR; ++j) q[j] = hold[j];
   for (int i = 0; i < NUM_ACTIONS; ++i) {
-    last_action[size_t(env) * NUM_ACTIONS + i] = a[i];
     const float v = fminf(fmaxf(a[i], -ACTION_CLIP), ACTION_CLIP);
+    last_action[size_t(env) * NUM_ACTIONS + i] = v;
     const int m = D_TO_MOTOR[i];
     if (m < owned_end) q[m] = v * D_ACTION_SCALE_ISAAC[i] + D_DEFAULT_ISAAC[i];
   }

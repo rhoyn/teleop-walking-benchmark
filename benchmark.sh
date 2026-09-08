@@ -13,7 +13,7 @@ MTHREADS=${MTHREADS:-$((($(nproc) - 1) * 3 / MJOBS))}
 export RUNS SONIC_DIV CPUS NICE
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done)
-POLICIES="$POLICIES clobot_with_arms"
+POLICIES="$POLICIES clobot_with_arms handoff_with_arms"
 
 RUN='
   n=$RUNS

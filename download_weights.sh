@@ -71,9 +71,21 @@ WEIGHTS=(
   "aaef00b10c001612638551670e3ecacbad11c3116c2cd2dfdee1b37add02e600"
   "https://raw.githubusercontent.com/IlikeSukiyaki/G1_GYM/1e5aa629187d7da31ce1f832071bd0a478b0f9aa/legged_gym/sim2mujoco/pre_train/g1_full/4_26_policy_lstm_16000.pt"
 
+  "policies/mimic_lite/policy.yaml"
+  "47be255e107d0447832b4819b555fe6c97208687b952f58b84338e6aeabf5069"
+  "https://drive.usercontent.google.com/download?id=1z5qIRs78-k6syKcTEoiEvi-Jp3VBhaYy&export=download&confirm=t"
+
+  "policies/mimic_lite/model_roa.onnx"
+  "78aec8b2738f3940fb47a58021b9584faa3f69b53476551c52a2026909db33c1"
+  "https://drive.usercontent.google.com/download?id=1xtHn7tu2s-A8RQ84AuT1EqiXQBYRe9pt&export=download&confirm=t"
+
   "policies/stepdown/model.pt"
   "3c3ddea79f3010640493bd65c39c7bdf8784131d923f1f1401c7957ba1adade6"
   "https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety/resolve/fd97d9ac2eccda849e6f7440a4c400a6cd3697ae/safety_motion.pt"
+
+  "policies/wcompton/model.onnx"
+  "134ae9450c41e4b282766825ea0295bda2cd7eda83f59781053194b87bad15e1"
+  "https://huggingface.co/wcompton/legged_locomotion_rl/resolve/844b125833faa820214546f16bc2e770db1471de/g1_blind_flat_end2end/2026-07-03_00-27-14_flat_loco/policy.onnx"
 )
 
 for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do

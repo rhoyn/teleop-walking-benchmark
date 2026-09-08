@@ -6,6 +6,7 @@
 *.safetensors
 .claude
 __pycache__/
+benchmark.log
 build/
 policies/bfm_zero/latents.csv
 policies/bfm_zero/model.onnx
@@ -15,6 +16,9 @@ policies/g1_gym/model.onnx
 policies/handoff/model.onnx
 policies/homie/model.onnx
 policies/legged_rl_lab/model.onnx
+policies/mimic_lite/model.onnx
+policies/mimic_lite/model_roa.onnx
+policies/mimic_lite/policy.yaml
 policies/robomimic/model.onnx
 policies/robomimic/model.pt
 policies/run_residual/model_cmg.onnx
@@ -22,6 +26,5 @@ policies/run_residual/model_residual.onnx
 policies/sonic/*.onnx
 policies/stepdown/model.onnx
 policies/wcompton/model.onnx
-videos/
 progress/
-benchmark.log
+videos/

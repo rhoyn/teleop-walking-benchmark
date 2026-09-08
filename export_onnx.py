@@ -303,6 +303,56 @@ def export_float_io(
     agree(dst, ref, session.run(None, example))
 
 
+def export_batched(
+    src,
+    dst,
+    batch=STEPS,
+):
+    """Reopen a one-row graph boundary as a dynamic batch of rows.
+
+    MimicLite exports a single robot: `command` [304] and `policy` [535] in,
+    `action` [29] out, with no batch axis at all. The harness drives the whole
+    field in one call, so every boundary tensor gains a leading dynamic axis.
+    The body is left alone -- every node in the graph is a MatMul, an Add, a
+    LayerNormalization over the last axis, a Mish, or a Concat on axis -1, and
+    all of those already broadcast over a leading batch.
+    """
+    model = onnx.load(src)
+    graph = model.graph
+
+    rows = {}
+    for value in list(graph.input) + list(graph.output):
+        shape = [d.dim_value for d in value.type.tensor_type.shape.dim]
+        if len(shape) != 1 or shape[0] < 1:
+            raise RuntimeError(
+                f"export_onnx: {src} boundary '{value.name}' is {shape}, not one row"
+            )
+        rows[value.name] = shape
+        value.CopyFrom(
+            onnx.helper.make_tensor_value_info(
+                value.name,
+                value.type.tensor_type.elem_type,
+                ["batch"] + shape,
+            )
+        )
+    del graph.value_info[:]
+    onnx.save(model, dst)
+
+    rng = np.random.default_rng(0)
+    feed = {
+        value.name: rng.standard_normal((batch, *rows[value.name])).astype(np.float32)
+        for value in graph.input
+    }
+    one = ort.InferenceSession(src, providers=["CPUExecutionProvider"])
+    many = ort.InferenceSession(dst, providers=["CPUExecutionProvider"])
+    per_row = [one.run(None, {n: v[r] for n, v in feed.items()}) for r in range(batch)]
+    ref = [
+        np.stack([per_row[r][k] for r in range(batch)])
+        for k in range(len(per_row[0]))
+    ]
+    agree(dst, ref, many.run(None, feed))
+
+
 def export_latents(
     src,
     dst,
@@ -422,6 +472,11 @@ def main():
         "policies/bfm_zero/reward_locomotion.pkl",
         "policies/bfm_zero/latents.csv",
         BFM_ZERO_LATENTS,
+    )
+
+    export_batched(
+        "policies/mimic_lite/model_roa.onnx",
+        "policies/mimic_lite/model.onnx",
     )
 
     context = np.zeros((1, SONIC_CTX, SONIC_QPOS), np.float32)

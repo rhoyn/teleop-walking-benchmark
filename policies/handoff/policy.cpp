@@ -2,6 +2,7 @@ namespace handoff {
 
 constexpr int NUM_ACTIONS = 29;
 constexpr int OWNED = 15;
+constexpr int WITH_ARMS_OWNED = NUM_ACTIONS;
 constexpr int FRAME_DIM = 106;
 constexpr int HISTORY_LEN = 11;
 constexpr int NUM_OBS = FRAME_DIM * (1 + HISTORY_LEN);
@@ -27,7 +28,7 @@ constexpr float CONTROL_DT = 0.02f;
       0.438577f, 0.438577f, 0.074501f, 0.074501f
 
 #define HANDOFF_HAND_CMD \
-  -0.08f, 0.23044664f, -0.09842005f, -0.08f, -0.23043664f, -0.09842005f
+  0.04f, 0.23044664f, -0.07842005f, 0.04f, -0.23043664f, -0.07842005f
 
 const float DEFAULTS[NUM_ACTIONS] = {HANDOFF_DEFAULTS};
 __device__ const float D_DEFAULTS[NUM_ACTIONS] = {HANDOFF_DEFAULTS};
@@ -141,6 +142,7 @@ __global__ void k_handoff_act(
     const float* __restrict__ arm_pose,
     float* __restrict__ last_action,
     float* __restrict__ q_target,
+    int owned_end,
     int envs
 ) {
   const int env = blockIdx.x * blockDim.x + threadIdx.x;
@@ -153,7 +155,8 @@ __global__ void k_handoff_act(
   for (int j = 0; j < NUM_ACTIONS; ++j) la[j] = a[j];
   for (int j = 0; j < POLICY_NUM_MOTOR; ++j)
     qt[j] = arm_pose[env * POLICY_NUM_MOTOR + j];
-  for (int j = 0; j < OWNED; ++j) qt[j] = D_DEFAULTS[j] + a[j] * D_ACT_SCALE[j];
+  for (int j = 0; j < owned_end; ++j)
+    qt[j] = D_DEFAULTS[j] + a[j] * D_ACT_SCALE[j];
 }
 
 const char* const MODEL_SRC = "policies/handoff/model.onnx";
@@ -263,15 +266,18 @@ std::string handoff_dynamic_model() {
   return MODEL_DYNAMIC;
 }
 
-struct Policy : policy_api::Policy {
+struct Base : policy_api::Policy {
   std::shared_ptr<policy_api::Engine> engine;
   float *d_obs = nullptr, *d_act = nullptr, *d_last = nullptr,
         *d_hist = nullptr;
   int envs = 0;
   long step_index = 0;
   bool primed = false;
+  int owned_end = OWNED;
 
-  ~Policy() override {
+  explicit Base(int end) : owned_end(end) {}
+
+  ~Base() override {
     for (void* p : {(void*)d_obs, (void*)d_act, (void*)d_last, (void*)d_hist}) {
       if (p) cudaFree(p);
     }
@@ -321,15 +327,25 @@ struct Policy : policy_api::Policy {
         c.arm_pose,
         d_last,
         c.q_target,
+        owned_end,
         envs
     );
   }
 
   const float* kp() const override { return KPS; }
   const float* kd() const override { return KDS; }
-  int owned() const override { return OWNED; }
+  int owned() const override { return owned_end; }
   policy_api::Limits limits() const override { return LIMITS; }
+};
+
+struct Policy : Base {
+  Policy() : Base(OWNED) {}
   const char* name() const override { return "handoff"; }
+};
+
+struct WithArmsPolicy : Base {
+  WithArmsPolicy() : Base(WITH_ARMS_OWNED) {}
+  const char* name() const override { return "handoff_with_arms"; }
 };
 
 }

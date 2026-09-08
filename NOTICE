@@ -10,14 +10,13 @@ recorded here.
 1. POLICY CHECKPOINTS
 -------------------------------------------------------------------------------
 
-Twenty-nine policies, and every checkpoint they load is third-party. Nineteen
+Thirty policies, and every checkpoint they load is third-party. Nineteen
 weight files are committed beside the policy that loads them; ./download_weights.sh
-pulls eighteen from their upstream repositories, so you take those under the
+pulls twenty-one from their upstream repositories, so you take those under the
 upstream's terms rather than under this repository's; ./export_onnx.py writes
-five on your machine -- three ONNX conversions, sonic's retyped planner and
-bfm_zero's latent table. One cannot be obtained automatically at all,
-wcompton's checkpoint, and is marked below -- running that policy means
-producing the file yourself.
+six on your machine -- four ONNX conversions, sonic's retyped planner and
+bfm_zero's latent table. Every checkpoint can now be obtained automatically:
+wcompton's, the one exception until its upstream came back, is fetched again.
 
 Some rows are ONNX conversions, written by ./export_onnx.py from the TorchScript
 checkpoints above them so that a policy can run on TensorRT. A conversion is a
@@ -53,7 +52,8 @@ refuses a download that does not match it.
     https://github.com/LeCAR-Lab/ASAP
 
   clobot  policies/clobot/model.onnx  62a9  Apache-2.0  committed
-    ClOBOT/clobot_g1_walking_model, deploy/policy.onnx
+  clobot  policies/clobot/deploy.yaml  d62b  Apache-2.0  committed
+    ClOBOT/clobot_g1_walking_model, deploy/policy.onnx and deploy/deploy.yaml
     https://huggingface.co/ClOBOT/clobot_g1_walking_model
 
   falcon  policies/falcon/model.onnx  ffea  MIT  committed
@@ -144,6 +144,25 @@ refuses a download that does not match it.
     zihanwang0422/legged_rl_lab, deploy/g1_deploy/exported_policy/g1_flat_1.onnx
     https://github.com/zihanwang0422/legged_rl_lab
 
+  mimic_lite  policies/mimic_lite/model_roa.onnx  78ae  NONE DECLARED  ./download_weights.sh
+  mimic_lite  policies/mimic_lite/policy.yaml  47be  NONE DECLARED  ./download_weights.sh
+  mimic_lite  policies/mimic_lite/model.onnx  2b11  NONE DECLARED  ./export_onnx.py, from model_roa.onnx
+    EGalahad/mimic-lite, the MimicLite-ROA 16x16384 release -- policy.onnx and
+    policy.yaml out of the shared sim2real artifacts folder on Google Drive,
+    where the project publishes its deploy checkpoints; the model card links
+    that folder and nothing else carries the file
+    https://github.com/EGalahad/mimic-lite
+    neither mimic-lite nor the sim2real deployment stack that runs it ships a
+    LICENSE file, so the checkpoint declares no terms at all
+    https://github.com/EGalahad/sim2real
+    model.onnx is model_roa.onnx with a batch axis opened at the graph
+    boundary, so TensorRT drives the whole field in one call instead of one
+    robot per call; no weight is touched
+    policy.yaml is the release's own deploy config -- joint order, gains,
+    default pose, action scale and the observation list the adapter is built
+    from. Nothing reads it at run time; it is fetched as the record of where
+    those constants came from
+
   nanog1  policies/nanog1/model.onnx  828d  MIT  committed
     kingJulio/nanoG1 for the weights, kingjulio8238/nanoG1 for the code
     https://huggingface.co/kingJulio/nanoG1
@@ -180,12 +199,15 @@ refuses a download that does not match it.
     third_party/rsl_rl/patches/ and not this checkpoint
     https://github.com/nvidia-isaac/WBC-AGILE
 
-  wcompton  policies/wcompton/model.onnx  134a  NONE DECLARED  not shipped, upstream gone
-    wcompton/legged_locomotion_rl -- the repository now returns HTTP 404, so
-    this checkpoint cannot be fetched from anywhere. ./download_weights.sh
-    carries no entry for it and cannot be given one; it declared no licence
-    while it existed, so no copy is committed here either. Running this policy
-    means supplying the file yourself
+  wcompton  policies/wcompton/model.onnx  134a  NONE DECLARED  ./download_weights.sh
+    wcompton/legged_locomotion_rl, the g1_blind_flat_end2end run
+    2026-07-03_00-27-14_flat_loco
+    https://huggingface.co/wcompton/legged_locomotion_rl
+    the repository returned HTTP 404 for a while and this row used to say the
+    file could not be fetched from anywhere. It is back, public and ungated,
+    and the checkpoint it now serves is byte for byte the one this table
+    records -- sha256 134ae945..., the file ./download_weights.sh pins. It
+    still declares no licence, so it is fetched rather than committed
 
   wty_cpp  policies/wty_cpp/model.onnx  f544  MIT  committed
     wty-yy/unitree_cpp_deploy
@@ -200,13 +222,12 @@ refuses a download that does not match it.
 
 Four flags worth reading twice:
 
-- Nine policies load a checkpoint that declares no licence at all, which makes
+- Ten policies load a checkpoint that declares no licence at all, which makes
   it effectively all-rights-reserved: dm_agile, dm_march, g1_gym, handoff, legged_rl_lab,
-  robomimic, run_residual, stepdown and wcompton. That is why none of them is
+  mimic_lite, robomimic, run_residual, stepdown and wcompton. That is why none of them is
   committed here -- this repository will not hand you a copy it has no right to
   hand you. The Apache-2.0 LICENSE circulating alongside the RoboMimic weights
-  belongs to AMO, a different project. wcompton is worse than the rest: its
-  upstream repository has been deleted, so the file cannot be fetched at all.
+  belongs to AMO, a different project.
 
 - homie and bfm_zero are CC BY-NC. Research and non-commercial use only; a
   commercial build must exclude both. They are fetched rather than committed,
