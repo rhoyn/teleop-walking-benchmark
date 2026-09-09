@@ -83,13 +83,20 @@ developed it at GEAR as the successor to `homie`, with substantial
 optimisations across the stack, so `gr00t_wbc` and `homie` are the same lineage
 rather than separate entries. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
 
-`decoupled_wbc` appears three times under different commanded postures, `h`
-naming the commanded torso height in metres and `p` the commanded torso pitch
-in radians. `h070_p000` is the configuration its authors call canonical; the
-two `h066` rows are the height and posture ablation they suggested, and both
-beat it. Recommended by @chrisyrniu in chrisyrniu/IsaacLab-Decoupled-WBC#1.
-
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
+
+### Why `decoupled_wbc` appears three times
+
+One policy and one checkpoint under three commanded postures: `h` is torso
+height in metres, `p` torso pitch in radians. All three own the same fifteen
+joints, so all three are ranked.
+
+`h070_p000` is the posture its authors call canonical, and they suggested the
+sweep. Height 0.70 → 0.66 m is worth **+2.5 points on MuJoCo, +3.8 on PhysX**,
+90% intervals clear of it. Pitch adds nothing, yet `h066_p012` is the table's
+lowest position error, energy and vibration.
+
+https://github.com/chrisyrniu/IsaacLab-Decoupled-WBC/issues/1#issuecomment-5596278961
 
 ### What a low score means
 
