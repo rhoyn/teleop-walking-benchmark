@@ -23,6 +23,7 @@ PHYSX_REPO ?= https://github.com/NVIDIA-Omniverse/PhysX.git
 PHYSX_REF  ?= 517a0073715120e114ee055b63b26c95e00d9039
 PHYSX_PRESET ?= linux-gcc-nosnip
 GPU_SASS   ?= 89
+PHYSX_SPIN_NS ?= 10000
 PHYSX  ?= $(PHYSX_SRC)/physx
 PXLIB  ?= $(PHYSX)/bin/linux.x86_64/release
 PXRPATH := $$ORIGIN/physx-sdk/physx/bin/linux.x86_64/release
@@ -70,13 +71,26 @@ physx-sdk:
 	git -C $(PHYSX_SRC) checkout --quiet $(PHYSX_REF)
 	sed -i 's/GENERATE_ARCH_CODE_LIST(SASS "[^"]*" PTX "[^"]*")/GENERATE_ARCH_CODE_LIST(SASS "$(GPU_SASS)" PTX "$(GPU_SASS)")/' \
 		$(PHYSX)/source/compiler/cmakegpu/CMakeLists.txt
+	grep -qF 'GENERATE_ARCH_CODE_LIST(SASS "$(GPU_SASS)" PTX "$(GPU_SASS)")' \
+		$(PHYSX)/source/compiler/cmakegpu/CMakeLists.txt \
+		|| { echo "physx-sdk: gpu arch patch did not apply to $(PHYSX_REF)" >&2; exit 1; }
+	sed -i 's|^\t\t\t\treturn false;$$|\t\t\t\treturn false;\n\t\t\t{ struct timespec ts = {0, $(PHYSX_SPIN_NS)}; ::nanosleep(\&ts, NULL); }|' \
+		$(PHYSX)/source/gpucommon/include/PxgCudaUtils.h
+	grep -qF '{0, $(PHYSX_SPIN_NS)}; ::nanosleep' \
+		$(PHYSX)/source/gpucommon/include/PxgCudaUtils.h \
+		|| { echo "physx-sdk: spin-wait patch did not apply to $(PHYSX_REF)" >&2; exit 1; }
 	sed -e 's/name="linux-gcc"/name="$(PHYSX_PRESET)"/' \
 	    -e 's/\(PX_BUILDSNIPPETS" value="\)True/\1False/' \
 	    -e 's/\(PX_BUILDPVDRUNTIME" value="\)True/\1False/' \
 	    -e 's|install/linux-gcc/|install/$(PHYSX_PRESET)/|' \
 	    $(PHYSX)/buildtools/presets/public/linux-gcc.xml > $(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml
+	grep -qF 'name="$(PHYSX_PRESET)"' \
+		$(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml \
+		|| { echo "physx-sdk: preset $(PHYSX_PRESET) not written" >&2; exit 1; }
 	cd $(PHYSX) && CUDACXX=$(NVCC) PATH=$(CUDA)/bin:$$PATH ./generate_projects.sh $(PHYSX_PRESET)
 	$(MAKE) -C $(PHYSX)/compiler/$(PHYSX_PRESET)-release -j$(shell nproc)
+	nm -D --undefined-only $(PXLIB)/libPhysXGpu_64.so | grep -q nanosleep \
+		|| { echo "physx-sdk: built PhysXGpu has no nanosleep, spin-wait patch was lost" >&2; exit 1; }
 
 MJWARP_NWORLD ?= 1024
 MJWARP_GRAPH  ?= $(BUILD)/mjwarp/g1

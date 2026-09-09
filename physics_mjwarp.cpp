@@ -502,9 +502,7 @@ class MjWarpPhysics : public Physics {
   const float* foot_height() const override { return host_foot_.data(); }
   const float* body_speed() const override { return host_speed_.data(); }
 
-  void apply_targets() override {
-    ck(cudaStreamSynchronize(nullptr), "apply_targets");
-  }
+  void apply_targets() override {}
 
   void set_punches(const PhysicsPunch* punches) override {
     for (int e = 0; e < envs_; ++e) {

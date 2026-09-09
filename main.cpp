@@ -1576,6 +1576,7 @@ int run(
     int argc,
     char** argv
 ) {
+  cudaSetDeviceFlags(cudaDeviceScheduleBlockingSync);
   int envs = 256;
   uint32_t runid0 = 0;
   std::string csv = "results/result.csv";

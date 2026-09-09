@@ -10,7 +10,10 @@ PJOBS=${PJOBS:-3}
 NICE=${NICE:-10}
 DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
-export RUNS SONIC_DIV CPUS NICE DELAY
+NCORES=$(($(nproc) - 1))
+CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
+echo 0 >"$CORESEQ"
+export RUNS SONIC_DIV CPUS NICE DELAY NCORES CORESEQ
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
   grep -vE '^(decoupled_wbc|gr00t_wbc)$')
@@ -28,7 +31,14 @@ RUN='
   [ "$P" = sonic ] && n=$((RUNS / SONIC_DIV))
   f=$((ROUND * n))
   out=$R.$P.$ENGINE
-  if chrt --idle 0 nice -n "$NICE" taskset -c "$CPUS" build/teleop-walking-benchmark \
+  CORE=$(
+    exec 9>"$CORESEQ.lock"
+    flock 9
+    i=$(cat "$CORESEQ")
+    echo $(((i + 1) % NCORES)) >"$CORESEQ"
+    echo $((1 + i))
+  )
+  if chrt --idle 0 nice -n "$NICE" taskset -c "$CORE" build/teleop-walking-benchmark \
       --engine "$ENGINE" --policy "$P" --runids "$f-$((f + n - 1))" \
       --csv "results/$out.csv" >"progress/$out.log" 2>&1; then
     grep "^mujoco:" "progress/$out.log" | sed "s|^|$out |" >>benchmark.log
@@ -52,7 +62,7 @@ while sleep 1; do
   done
 done &
 MON=$!
-trap 'kill $MON 2>/dev/null || true' EXIT
+trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock"' EXIT
 
 JOBS=$(for r in $(seq 0 $((ROUNDS - 1))); do for p in $POLICIES; do echo "$r $p"; done; done)
 
