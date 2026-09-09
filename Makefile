@@ -86,7 +86,16 @@ physx-sdk:
 	    $(PHYSX)/buildtools/presets/public/linux-gcc.xml > $(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml
 	grep -qF 'name="$(PHYSX_PRESET)"' \
 		$(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml \
-		|| { echo "physx-sdk: preset $(PHYSX_PRESET) not written" >&2; exit 1; }
+		|| { echo "physx-sdk: preset name not set in $(PHYSX_PRESET).xml" >&2; exit 1; }
+	grep -qF '"PX_BUILDSNIPPETS" value="False"' \
+		$(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml \
+		|| { echo "physx-sdk: snippets not disabled in $(PHYSX_PRESET).xml" >&2; exit 1; }
+	grep -qF '"PX_BUILDPVDRUNTIME" value="False"' \
+		$(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml \
+		|| { echo "physx-sdk: pvd runtime not disabled in $(PHYSX_PRESET).xml" >&2; exit 1; }
+	grep -qF 'value="install/$(PHYSX_PRESET)/PhysX"' \
+		$(PHYSX)/buildtools/presets/public/$(PHYSX_PRESET).xml \
+		|| { echo "physx-sdk: install path not redirected in $(PHYSX_PRESET).xml" >&2; exit 1; }
 	cd $(PHYSX) && CUDACXX=$(NVCC) PATH=$(CUDA)/bin:$$PATH ./generate_projects.sh $(PHYSX_PRESET)
 	$(MAKE) -C $(PHYSX)/compiler/$(PHYSX_PRESET)-release -j$(shell nproc)
 	nm -D --undefined-only $(PXLIB)/libPhysXGpu_64.so | grep -q nanosleep \
