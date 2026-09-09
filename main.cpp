@@ -1599,7 +1599,7 @@ int run(
       const std::string want = argv[++i];
       if (want == "physx") {
         engine = PhysicsEngine::kPhysx;
-      } else if (want == "mujoco" || want == "mjwarp") {
+      } else if (want == "mujoco") {
         engine = PhysicsEngine::kMujoco;
       } else {
         std::fprintf(stderr, "unknown --engine '%s'\n", want.c_str());
