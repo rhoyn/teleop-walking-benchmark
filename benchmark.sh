@@ -53,6 +53,9 @@ make capture MJWARP_NWORLD="$RUNS"
 mkdir -p results progress
 rm -f progress/*.log benchmark.log
 
+CPUPREV=$(mktemp -t benchmark-cpu.XXXXXX)
+grep '^cpu[0-9]' /proc/stat >"$CPUPREV"
+
 while sleep 1; do
   printf '\033[H\033[2J'
   for f in progress/*.log; do
@@ -60,9 +63,20 @@ while sleep 1; do
     printf '%-34s %8s robot-sim-s/s\n' "$(basename "$f" .log)" \
       "$(grep -o '[0-9]\+ robot-sim-s/s' "$f" | tail -1 | cut -d' ' -f1)"
   done
+  nvidia-smi --query-gpu=index,utilization.gpu,memory.used,memory.total,power.draw,power.max_limit \
+    --format=csv,noheader,nounits 2>/dev/null |
+    awk -F', *' '{printf "gpu%-2s %3s%%  %6s/%-6s MiB  %5.0f/%-5.0f W\n", $1, $2, $3, $4, $5, $6}'
+  grep '^cpu[0-9]' /proc/stat >"$CPUPREV.new"
+  awk 'NR==FNR { for (i = 2; i <= NF; i++) p[$1, i] = $i; next }
+       { t = 0; for (i = 2; i <= NF; i++) t += $i - p[$1, i]
+         idle = ($5 - p[$1, 5]) + ($6 - p[$1, 6])
+         printf "%4.0f", (t > 0) ? 100 * (t - idle) / t : 0
+         if (++n % 16 == 0) printf "\n" }
+       END { if (n % 16) printf "\n" }' "$CPUPREV" "$CPUPREV.new"
+  mv "$CPUPREV.new" "$CPUPREV"
 done &
 MON=$!
-trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock"' EXIT
+trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock" "$CPUPREV" "$CPUPREV.new"' EXIT
 
 for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
