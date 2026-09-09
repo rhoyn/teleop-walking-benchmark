@@ -37,16 +37,20 @@ in `build/trt/`; inference is under 3% of a run.
 
 ## Results
 
-538,880 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
+604,416 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
 runs 128 a round and round 0 is short for `amo` and `asap`. A run id
 names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 
 | `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
 |---:|---:|---:|---:|---:|
+| `gr00t_wbc_h066_p000` | **87/84 %** | 36 cm / 8° | 5773 J | 1461 |
+| `gr00t_wbc_h066_p012` | **88/81 %** | 34 cm / 7° | 5870 J | 1435 |
+| `gr00t_wbc_h070_p000` | **83/85 %** | 19 cm / 5° | 5694 J | 1503 |
 | `decoupled_wbc_h066_p012` | **77/84 %** | 12 cm / 6° | 5260 J | 1790 |
 | `decoupled_wbc_h066_p000` | **78/83 %** | 13 cm / 6° | 5419 J | 1844 |
-| `gr00t_wbc` | **77/78 %** | 15 cm / 5° | 6037 J | 1606 |
+| `gr00t_wbc_h074_p000` | **77/78 %** | 15 cm / 5° | 6037 J | 1606 |
 | `decoupled_wbc_h070_p000` | **75/80 %** | 13 cm / 6° | 5463 J | 1825 |
+| `decoupled_wbc_h074_p000` | **72/76 %** | 13 cm / 7° | 5558 J | 1841 |
 | `homie` | **69/73 %** | 21 cm / 39° | 7149 J | 1934 |
 | `grove` | **62/77 %** | 21 cm / 6° | 8692 J | 2382 |
 | `amo` | **64/73 %** | 36 cm / 16° | 7832 J | 1618 |
@@ -85,17 +89,26 @@ rather than separate entries. Confirmed by @Elgce in InternRobotics/OpenHomie#23
 
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
 
-### Why `decoupled_wbc` appears three times
+### Why two policies appear four times each
 
-One policy and one checkpoint under three commanded postures: `h` is torso
-height in metres, `p` torso pitch in radians. All three own the same fifteen
-joints, so all three are ranked.
+`gr00t_wbc` and `decoupled_wbc` are each one checkpoint under four commanded
+postures: `h` is torso height in metres, `p` torso pitch in radians. Every row
+owns the same fifteen joints and takes the same commands as any other entry, so
+every row is ranked. `gr00t_wbc_h074_p000` and `decoupled_wbc_h070_p000` are
+the postures their authors call canonical.
 
-`h070_p000` is the posture its authors call canonical, and they suggested the
-sweep. Height 0.70 → 0.66 m is worth **+2.5 points on MuJoCo, +3.8 on PhysX**,
-90% intervals clear of it. Pitch adds nothing, yet `h066_p012` is the table's
-lowest position error, energy and vibration.
+Commanded height is the only thing that moves the score, and for `gr00t_wbc` it
+buys completion by giving up tracking: 0.74 → 0.70 m is worth six points of
+completion for four centimetres of position error, and 0.66 m another four
+points for seventeen more centimetres. `decoupled_wbc` pays no such price —
+0.70 → 0.66 m gains three points and its position error stays at 12-13 cm,
+the lowest in the table. Commanded pitch does nothing for completion in either.
 
+A wider sweep over `gr00t_wbc`'s walk/balance switch found it inert, so it is
+not reported. Read every one of these rows against the error column as well as
+the completion column.
+
+The `decoupled_wbc` sweep was suggested by @chrisyrniu in
 https://github.com/chrisyrniu/IsaacLab-Decoupled-WBC/issues/1#issuecomment-5596278961
 
 ### What a low score means

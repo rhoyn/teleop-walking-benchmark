@@ -6,10 +6,22 @@ constexpr int NUM_OBS = SINGLE_OBS * HISTORY;
 constexpr int NUM_ACTIONS = 15;
 constexpr float ACTION_SCALE = 0.25f;
 constexpr float BALANCE_CMD_NORM = 0.05f;
-constexpr float HEIGHT_CMD = 0.74f;
 constexpr float ANG_VEL_SCALE = 0.5f;
 constexpr float DOF_VEL_SCALE = 0.05f;
 constexpr float CMD_SCALE_X = 2.0f, CMD_SCALE_Y = 2.0f, CMD_SCALE_YAW = 0.5f;
+
+struct Variant {
+  const char* name;
+  float height;
+  float pitch;
+};
+
+constexpr Variant VARIANTS[] = {
+    {"gr00t_wbc_h074_p000", 0.74f, 0.00f},
+    {"gr00t_wbc_h070_p000", 0.70f, 0.00f},
+    {"gr00t_wbc_h066_p000", 0.66f, 0.00f},
+    {"gr00t_wbc_h066_p012", 0.66f, 0.12f}
+};
 
 #define GR00T_WBC_DEFAULTS                                                    \
   -0.1f, 0.0f, 0.0f, 0.3f, -0.2f, 0.0f, -0.1f, 0.0f, 0.0f, 0.3f, -0.2f, 0.0f, \
@@ -31,6 +43,8 @@ __global__ void k_gr00t_wbc_obs(
     const float* __restrict__ cmd,
     const float* __restrict__ last_action,
     float* __restrict__ obs,
+    float cmd_height,
+    float cmd_body_pitch,
     int envs
 ) {
   const int env = blockIdx.x * blockDim.x + threadIdx.x;
@@ -44,9 +58,9 @@ __global__ void k_gr00t_wbc_obs(
   f[0] = c[0] * CMD_SCALE_X;
   f[1] = c[1] * CMD_SCALE_Y;
   f[2] = c[2] * CMD_SCALE_YAW;
-  f[3] = HEIGHT_CMD;
+  f[3] = cmd_height;
   f[4] = 0.0f;
-  f[5] = 0.0f;
+  f[5] = cmd_body_pitch;
   f[6] = 0.0f;
   for (int k = 0; k < 3; ++k) f[7 + k] = gyro[env * 3 + k] * ANG_VEL_SCALE;
   for (int k = 0; k < 3; ++k) f[10 + k] = gravity[env * 3 + k];
@@ -92,6 +106,9 @@ struct Policy : policy_api::Policy {
   float *d_obs = nullptr, *d_walk = nullptr, *d_balance = nullptr;
   float *d_last = nullptr, *d_defaults = nullptr;
   int envs = 0;
+  const Variant variant;
+
+  explicit Policy(const Variant& v) : variant(v) {}
 
   ~Policy() override {
     for (void* p :
@@ -138,6 +155,8 @@ struct Policy : policy_api::Policy {
         c.cmd,
         d_last,
         d_obs,
+        variant.height,
+        variant.pitch,
         envs
     );
     policy_api::engine_run(*walk, d_obs, d_walk, envs);
@@ -157,7 +176,20 @@ struct Policy : policy_api::Policy {
   const float* kd() const override { return KDS; }
   int owned() const override { return NUM_ACTIONS; }
   policy_api::Limits limits() const override { return LIMITS; }
-  const char* name() const override { return "gr00t_wbc"; }
+  const char* name() const override { return variant.name; }
 };
+
+std::vector<std::string> names() {
+  std::vector<std::string> all;
+  for (const Variant& v : VARIANTS) all.emplace_back(v.name);
+  return all;
+}
+
+std::unique_ptr<policy_api::Policy> make(const std::string& name) {
+  for (const Variant& v : VARIANTS) {
+    if (name == v.name) return std::make_unique<Policy>(v);
+  }
+  return nullptr;
+}
 
 }

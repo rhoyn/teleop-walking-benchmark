@@ -689,15 +689,11 @@ void engine_run(
 namespace {
 
 const char* const NAMES[] = {
-    "gr00t_wbc",
     "amo",
     "asap",
     "bfm_zero",
     "clobot",
     "clobot_with_arms",
-    "decoupled_wbc_h070_p000",
-    "decoupled_wbc_h066_p000",
-    "decoupled_wbc_h066_p012",
     "dm_agile",
     "dm_march",
     "falcon",
@@ -728,23 +724,23 @@ const char* const NAMES[] = {
 }
 
 std::vector<std::string> policy_names() {
-  return std::vector<std::string>(std::begin(NAMES), std::end(NAMES));
+  std::vector<std::string> names(std::begin(NAMES), std::end(NAMES));
+  const std::vector<std::string> gr00t = gr00t_wbc::names();
+  names.insert(names.begin(), gr00t.begin(), gr00t.end());
+  const std::vector<std::string> decoupled = decoupled_wbc::names();
+  names.insert(names.end(), decoupled.begin(), decoupled.end());
+  return names;
 }
 
 std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
-  if (name == "gr00t_wbc") return std::make_unique<gr00t_wbc::Policy>();
+  if (auto gr00t = gr00t_wbc::make(name)) return gr00t;
+  if (auto dec = decoupled_wbc::make(name)) return dec;
   if (name == "amo") return std::make_unique<amo::Policy>();
   if (name == "asap") return std::make_unique<asap::Policy>();
   if (name == "bfm_zero") return std::make_unique<bfm_zero::Policy>();
   if (name == "clobot") return std::make_unique<clobot::Policy>();
   if (name == "clobot_with_arms")
     return std::make_unique<clobot::WithArmsPolicy>();
-  if (name == "decoupled_wbc_h070_p000")
-    return std::make_unique<decoupled_wbc::PolicyH070P000>();
-  if (name == "decoupled_wbc_h066_p000")
-    return std::make_unique<decoupled_wbc::PolicyH066P000>();
-  if (name == "decoupled_wbc_h066_p012")
-    return std::make_unique<decoupled_wbc::PolicyH066P012>();
   if (name == "dm_agile") return std::make_unique<dm_agile::Policy>();
   if (name == "dm_march") return std::make_unique<dm_march::Policy>();
   if (name == "falcon") return std::make_unique<falcon::Policy>();
@@ -1583,7 +1579,7 @@ int run(
   double realtime = 0.0;
   bool preview_on = false;
   std::string record_dir;
-  std::string policy_name = "gr00t_wbc";
+  std::string policy_name = "gr00t_wbc_h074_p000";
   PhysicsEngine engine = PhysicsEngine::kPhysx;
   int threads = int(std::thread::hardware_concurrency());
   if (threads < 1) threads = 1;
@@ -1632,7 +1628,8 @@ int run(
           "usage: teleop-walking-benchmark [options]\n"
           "  --engine NAME     mujoco or physx (default physx)\n"
           "  --threads N       mujoco fleet shards (default: cores)\n"
-          "  --policy NAME     which candidate to drive (default gr00t_wbc)\n"
+          "  --policy NAME     which candidate to drive (default "
+          "gr00t_wbc_h074_p000)\n"
           "  --runs N          fleet size, one robot per run id (default 256)\n"
           "  --runid N         first run id (default 0)\n"
           "  --runids A-B      the same, as a closed range\n"

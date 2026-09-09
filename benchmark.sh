@@ -8,19 +8,20 @@ SONIC_DIV=${SONIC_DIV:-8}
 MJOBS=${MJOBS:-3}
 PJOBS=${PJOBS:-3}
 NICE=${NICE:-10}
+DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
 MTHREADS=${MTHREADS:-$((($(nproc) - 1) * 3 / MJOBS))}
-export RUNS SONIC_DIV CPUS NICE
+export RUNS SONIC_DIV CPUS NICE DELAY
 
-#POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
-#  grep -v '^decoupled_wbc$')
-#POLICIES="$POLICIES clobot_with_arms handoff_with_arms"
-#POLICIES="$POLICIES decoupled_wbc_h070_p000 decoupled_wbc_h066_p000"
-#POLICIES="$POLICIES decoupled_wbc_h066_p012"
-
-POLICIES="decoupled_wbc_h066_p000 decoupled_wbc_h066_p012"
+POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
+  grep -vE '^(decoupled_wbc|gr00t_wbc)$')
+POLICIES="$POLICIES clobot_with_arms handoff_with_arms"
+for h in h074_p000 h070_p000 h066_p000 h066_p012; do
+  POLICIES="$POLICIES gr00t_wbc_$h decoupled_wbc_$h"
+done
 
 RUN='
+  sleep $((RANDOM % (DELAY + 1)))
   ROUND=$0
   P=$1
   R=$(printf "r%02d" "$ROUND")
@@ -52,18 +53,6 @@ while sleep 1; do
 done &
 MON=$!
 trap 'kill $MON 2>/dev/null || true' EXIT
-
-# TEMPORARY: no barrier between rounds -- every round x policy job goes into one
-# flat queue, so xargs starts the next job as soon as a slot frees. Restore the
-# loop below to go back to round-at-a-time.
-#
-# for r in $(seq 0 $((ROUNDS - 1))); do
-#   export ROUND=$r R=$(printf 'r%02d' "$r")
-#   printf '%s\n' $POLICIES | ENGINE=mujoco TH=$MTHREADS xargs -P "$MJOBS" -n 1 bash -c "$RUN" &
-#   M=$!
-#   printf '%s\n' $POLICIES | ENGINE=physx TH=1 xargs -P "$PJOBS" -n 1 bash -c "$RUN" &
-#   wait "$M" "$!"
-# done
 
 JOBS=$(for r in $(seq 0 $((ROUNDS - 1))); do for p in $POLICIES; do echo "$r $p"; done; done)
 

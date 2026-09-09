@@ -5,11 +5,20 @@ constexpr int FRAME = 58;
 constexpr int HISTORY = 2;
 constexpr int NUM_OBS = FRAME * HISTORY;
 constexpr float ACTION_SCALE = 0.25f;
-constexpr float CMD_HEIGHT_H070 = 0.70f;
-constexpr float CMD_HEIGHT_H066 = 0.66f;
-constexpr float CMD_BODY_ROLL = 0.0f, CMD_BODY_PITCH_P000 = 0.0f,
-                CMD_BODY_YAW = 0.0f;
-constexpr float CMD_BODY_PITCH_P012 = 0.12f;
+constexpr float CMD_BODY_ROLL = 0.0f, CMD_BODY_YAW = 0.0f;
+
+struct Variant {
+  const char* name;
+  float height;
+  float pitch;
+};
+
+constexpr Variant VARIANTS[] = {
+    {"decoupled_wbc_h074_p000", 0.74f, 0.00f},
+    {"decoupled_wbc_h070_p000", 0.70f, 0.00f},
+    {"decoupled_wbc_h066_p000", 0.66f, 0.00f},
+    {"decoupled_wbc_h066_p012", 0.66f, 0.12f}
+};
 
 constexpr int WAIST_PITCH = 14;
 constexpr float WAIST_PITCH_MIN = -0.60f, WAIST_PITCH_MAX = 0.60f;
@@ -97,21 +106,15 @@ __global__ void k_decoupled_wbc_act(
   *w = fminf(fmaxf(*w, WAIST_PITCH_MIN), WAIST_PITCH_MAX);
 }
 
-struct Base : policy_api::Policy {
+struct Policy : policy_api::Policy {
   std::shared_ptr<policy_api::Engine> engine;
   float *d_obs = nullptr, *d_act = nullptr, *d_last = nullptr;
   int envs = 0;
-  const float cmd_height;
-  const float cmd_body_pitch;
+  const Variant variant;
 
-  Base(
-      float height,
-      float pitch
-  )
-      : cmd_height(height),
-        cmd_body_pitch(pitch) {}
+  explicit Policy(const Variant& v) : variant(v) {}
 
-  ~Base() override {
+  ~Policy() override {
     for (void* p : {(void*)d_obs, (void*)d_act, (void*)d_last}) {
       if (p) cudaFree(p);
     }
@@ -142,8 +145,8 @@ struct Base : policy_api::Policy {
         c.cmd,
         d_last,
         d_obs,
-        cmd_height,
-        cmd_body_pitch,
+        variant.height,
+        variant.pitch,
         envs
     );
     policy_api::engine_run(*engine, d_obs, d_act, envs);
@@ -160,32 +163,20 @@ struct Base : policy_api::Policy {
   const float* kd() const override { return KDS; }
   int owned() const override { return NUM_ACTIONS; }
   policy_api::Limits limits() const override { return LIMITS; }
+  const char* name() const override { return variant.name; }
 };
 
-struct PolicyH070P000 : Base {
-  PolicyH070P000()
-      : Base(
-            CMD_HEIGHT_H070,
-            CMD_BODY_PITCH_P000
-        ) {}
-  const char* name() const override { return "decoupled_wbc_h070_p000"; }
-};
+std::vector<std::string> names() {
+  std::vector<std::string> all;
+  for (const Variant& v : VARIANTS) all.emplace_back(v.name);
+  return all;
+}
 
-struct PolicyH066P000 : Base {
-  PolicyH066P000()
-      : Base(
-            CMD_HEIGHT_H066,
-            CMD_BODY_PITCH_P000
-        ) {}
-  const char* name() const override { return "decoupled_wbc_h066_p000"; }
-};
+std::unique_ptr<policy_api::Policy> make(const std::string& name) {
+  for (const Variant& v : VARIANTS) {
+    if (name == v.name) return std::make_unique<Policy>(v);
+  }
+  return nullptr;
+}
 
-struct PolicyH066P012 : Base {
-  PolicyH066P012()
-      : Base(
-            CMD_HEIGHT_H066,
-            CMD_BODY_PITCH_P012
-        ) {}
-  const char* name() const override { return "decoupled_wbc_h066_p012"; }
-};
 }
