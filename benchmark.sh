@@ -12,7 +12,11 @@ CPUS=1-$(($(nproc) - 1))
 NCORES=$(($(nproc) - 1))
 CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
 echo 0 >"$CORESEQ"
-export RUNS SONIC_DIV CPUS NICE DELAY NCORES CORESEQ
+NGPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l)
+[ "$NGPUS" -ge 1 ] || NGPUS=1
+GPUSEQ=$(mktemp -t benchmark-gpu.XXXXXX)
+echo 0 >"$GPUSEQ"
+export RUNS SONIC_DIV CPUS NICE DELAY NCORES CORESEQ NGPUS GPUSEQ
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
   grep -vE '^(decoupled_wbc|gr00t_wbc)$')
@@ -38,7 +42,14 @@ RUN='
     echo $(((i + 1) % NCORES)) >"$CORESEQ"
     echo $((1 + i))
   )
-  if chrt --idle 0 nice -n "$NICE" taskset -c "$CORE" build/teleop-walking-benchmark \
+  GPU=$(
+    exec 8>"$GPUSEQ.lock"
+    flock 8
+    i=$(cat "$GPUSEQ")
+    echo $(((i + 1) % NGPUS)) >"$GPUSEQ"
+    echo $i
+  )
+  if CUDA_VISIBLE_DEVICES="$GPU" chrt --idle 0 nice -n "$NICE" taskset -c "$CORE" build/teleop-walking-benchmark \
       --engine "$ENGINE" --policy "$P" --runids "$f-$((f + n - 1))" \
       --csv "results/$out.csv" >"progress/$out.log" 2>&1; then
     grep "^mujoco:" "progress/$out.log" | sed "s|^|$out |" >>benchmark.log
@@ -76,7 +87,7 @@ while sleep 1; do
   mv "$CPUPREV.new" "$CPUPREV"
 done &
 MON=$!
-trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock" "$CPUPREV" "$CPUPREV.new"' EXIT
+trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock" "$GPUSEQ" "$GPUSEQ.lock" "$CPUPREV" "$CPUPREV.new"' EXIT
 
 for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
