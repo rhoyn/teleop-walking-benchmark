@@ -37,8 +37,8 @@ in `build/trt/`; inference is under 3% of a run.
 
 ## Results
 
-471,424 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
-runs 128 a round and round 0 is short for `amo`, `asap` and `clobot`. A run id
+506,112 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
+runs 128 a round and round 0 is short for `amo` and `asap`. A run id
 names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 
 | `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
@@ -50,6 +50,7 @@ names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 | `amo` | **64/73 %** | 36 cm / 16° | 7832 J | 1618 |
 | `wbc_agile` | **40/38 %** | 35 cm / 10° | 5953 J | 1741 |
 | `sonic` | **47/24 %** | 42 cm / 11° | 10947 J | 1814 |
+| `mimic_lite` | **18/29 %** | 84 cm / 13° | 11719 J | 2216 |
 | `robomimic` | **16/18 %** | 172 cm / 15° | - | - |
 | `bfm_zero` | **22/12 %** | 157 cm / 44° | - | - |
 | `run_residual` | **12/17 %** | 524 cm / 15° | - | - |
@@ -58,7 +59,7 @@ names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 | `openwbt` | **0/6 %** | 75 cm / 49° | - | - |
 | `rl_gym` | **0/4 %** | 101 cm / 25° | - | - |
 | `wty_cpp` | **2/1 %** | 39 cm / 27° | - | - |
-| `handoff` | **0/1 %** | 146 cm / 25° | - | - |
+| `handoff` | **0/1 %** | 144 cm / 24° | - | - |
 | `dm_agile` | **1/1 %** | 55 cm / 89° | - | - |
 | `rl_lab` | **0/0 %** | 78 cm / 73° | - | - |
 | `zealot` | **0/0 %** | 352 cm / 87° | - | - |
@@ -70,16 +71,17 @@ names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 | `g1_gym` | **0/0 %** | 112 cm / 87° | - | - |
 | `nanog1` | **0/0 %** | 82 cm / 61° | - | - |
 | `wcompton` | **0/0 %** | 132 cm / 64° | - | - |
-| `clobot` | **0/0 %** | 131 cm / 75° | - | - |
+| `clobot` | **0/0 %** | 125 cm / 77° | - | - |
 | `stepdown` | **0/0 %** | 95 cm / 63° | - | - |
-| ~~`clobot_with_arms`~~\*\* | ~~**9/5 %**~~ | ~~50 cm / 20°~~ | - | - |
+| ~~`handoff_with_arms`~~\*\* | ~~**49/50 %**~~ | ~~17 cm / 9°~~ | ~~6920 J~~ | ~~1234~~ |
+| ~~`clobot_with_arms`~~\*\* | ~~**9/5 %**~~ | ~~39 cm / 21°~~ | - | - |
 
 `gr00t_wbc` is HOMIE v2, not an independent policy family. Its author
 developed it at GEAR as the successor to `homie`, with substantial
 optimisations across the stack, so first and third place here are the same
 lineage. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
 
-\*\* Unranked, because it is `clobot` given all 29 joints instead of 15.
+\*\* Unranked, because it is the same policy given all 29 joints instead of 15.
 
 ## MuJoCo vs Isaac Sim engine: PhysX
 

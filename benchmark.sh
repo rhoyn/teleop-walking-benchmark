@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 RUNS=${RUNS:-1024}
-ROUNDS=${ROUNDS:-10}
+ROUNDS=${ROUNDS:-8}
 SONIC_DIV=${SONIC_DIV:-8}
 MJOBS=${MJOBS:-2}
 PJOBS=${PJOBS:-3}
