@@ -5,15 +5,15 @@ cd "$(dirname "$0")"
 RUNS=${RUNS:-2048}
 ROUNDS=${ROUNDS:-4}
 SONIC_DIV=${SONIC_DIV:-8}
-JOBS=${JOBS:-4}
+NGPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l)
+[ "$NGPUS" -ge 1 ] || NGPUS=1
+JOBS=${JOBS:-$((4 * NGPUS))}
 NICE=${NICE:-10}
 DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
 NCORES=$(($(nproc) - 1))
 CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
 echo 0 >"$CORESEQ"
-NGPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l)
-[ "$NGPUS" -ge 1 ] || NGPUS=1
 GPUDIR=$(mktemp -d -t benchmark-gpu.XXXXXX)
 GPUSLOTS=$(((JOBS + NGPUS - 1) / NGPUS))
 export RUNS SONIC_DIV CPUS NICE DELAY NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
