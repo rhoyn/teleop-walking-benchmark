@@ -2,11 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-RUNS=${RUNS:-1024}
-ROUNDS=${ROUNDS:-8}
+RUNS=${RUNS:-2048}
+ROUNDS=${ROUNDS:-4}
 SONIC_DIV=${SONIC_DIV:-8}
-MJOBS=${MJOBS:-3}
-PJOBS=${PJOBS:-3}
+JOBS=${JOBS:-4}
 NICE=${NICE:-10}
 DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
@@ -26,6 +25,7 @@ RUN='
   sleep $((RANDOM % (DELAY + 1)))
   ROUND=$0
   P=$1
+  ENGINE=$2
   R=$(printf "r%02d" "$ROUND")
   n=$RUNS
   [ "$P" = sonic ] && n=$((RUNS / SONIC_DIV))
@@ -64,10 +64,8 @@ done &
 MON=$!
 trap 'kill $MON 2>/dev/null || true; rm -f "$CORESEQ" "$CORESEQ.lock"' EXIT
 
-JOBS=$(for r in $(seq 0 $((ROUNDS - 1))); do for p in $POLICIES; do echo "$r $p"; done; done)
-
-printf '%s\n' "$JOBS" | ENGINE=mujoco xargs -P "$MJOBS" -n 2 bash -c "$RUN" &
-M=$!
-printf '%s\n' "$JOBS" | ENGINE=physx xargs -P "$PJOBS" -n 2 bash -c "$RUN" &
-P=$!
-wait "$M" "$P"
+for r in $(seq 0 $((ROUNDS - 1))); do
+  for p in $POLICIES; do
+    for e in mujoco physx; do echo "$r $p $e"; done
+  done | xargs -P "$JOBS" -n 3 bash -c "$RUN"
+done
