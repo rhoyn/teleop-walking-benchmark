@@ -20,14 +20,14 @@ balance. The best finishes most runs, none all.
 Every policy and every physics engine sits behind the same CUDA interface, so
 the harness runs the whole field batched on the GPU instead of one process per
 policy per run id. That is what makes 471,424 runs cheap enough to be a
-benchmark rather than a demo — the one exception is MuJoCo, which is not GPU
-friendly and steps on the CPU.
+benchmark rather than a demo. Both engines step on the GPU: PhysX natively,
+MuJoCo through [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp).
 
 ## Running
 
 ```sh
-./download_weights.sh && ./export_onnx.py && make
-./run.sh --policy gr00t_wbc --engine physx --runids 0-255
+./download_weights.sh && ./export_onnx.sh && make && make capture
+./run.sh --policy gr00t_wbc_h074_p000 --engine physx --runids 0-255
 ./benchmark.sh          # whole field, both engines
 ```
 
@@ -35,11 +35,21 @@ Batches write `results/r<NN>.<policy>.<engine>.csv`; `./build/table` renders
 the table, problems land in `benchmark.log`. Policies are TensorRT plans cached
 in `build/trt/`; inference is under 3% of a run.
 
+MuJoCo Warp has no C API, so `make capture` records one substep as a CUDA graph
+into `build/mjwarp/` and `--engine mujoco` replays it from C++ with no Python at
+run time. It will not start without that capture, and the capture fixes the
+fleet size — re-record when the model or `--runs` changes:
+`make capture MJWARP_NWORLD=256`.
+
 ## Results
 
 604,416 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
 runs 128 a round and round 0 is short for `amo` and `asap`. A run id
-names one whole task; MuJoCo repeats bit for bit, PhysX does not.
+names one whole task.
+
+The `mujoco` column was measured on the CPU engine, before MuJoCo moved to the
+GPU. The two agree in aggregate but not run id for run id, so the column is
+comparable in the table and not reproducible run by run against current `main`.
 
 | `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
 |---:|---:|---:|---:|---:|
@@ -131,15 +141,16 @@ about the policy changes between the two halves of `completed`; only the
 contact model does.
 
 They disagree because contact is solved differently: MuJoCo integrates soft
-convex constraints on the CPU, PhysX runs a TGS solver over rigid contact
-patches on the GPU, and neither is the real robot. A policy that scores in one
-engine has learned that engine's contacts; one that scores in both survives a
-change of contact model it never saw in training, which is the best proxy here
-for sim-to-real transfer. Read the two numbers together, not separately.
+convex constraints, PhysX runs a TGS solver over rigid contact patches, and
+neither is the real robot. A policy that scores in one engine has learned that
+engine's contacts; one that scores in both survives a change of contact model
+it never saw in training, which is the best proxy here for sim-to-real
+transfer. Read the two numbers together, not separately.
 
-MuJoCo repeats a run id bit for bit. PhysX reduces contact forces across GPU
-threads in arbitrary order, so the same run id can pass one round and fall the
-next.
+Neither engine repeats a run id bit for bit any more: both reduce contact
+forces across GPU threads in arbitrary order, so the same run id can pass one
+round and fall the next. MuJoCo did repeat exactly while it stepped on the CPU,
+which is how the `mujoco` column above was measured.
 
 ## Weights
 
