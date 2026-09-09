@@ -830,6 +830,8 @@ constexpr int RECORD_HEIGHT = 90;
 constexpr int ARM_LEFT_FIRST = 15, ARM_RIGHT_FIRST = 22, ARM_DOF = 7;
 constexpr double ARM_STEP_RAD = 0.06;
 constexpr int ARM_DRAWS = 8;
+constexpr double ARM_TARGET_S = 0.5;
+constexpr int ARM_TICKS = static_cast<int>(ARM_TARGET_S / PERIOD_S + 0.5);
 
 const double ARM_MIRROR[ARM_DOF] = {1.0, -1.0, -1.0, 1.0, -1.0, 1.0, -1.0};
 
@@ -861,6 +863,9 @@ struct Run {
   std::vector<Waypoint> tour;
   std::mt19937 arm_rng;
   double arm_left[ARM_DOF] = {};
+  double arm_from[ARM_DOF] = {};
+  double arm_to[ARM_DOF] = {};
+  int arm_window = -1;
   double arm_lo[ARM_DOF] = {};
   double arm_hi[ARM_DOF] = {};
 
@@ -1716,8 +1721,11 @@ int run(
 
     if (getenv("NOPUNCH") == nullptr)
       r.punches = schedule_make(r.run_id, PUNCH_DELAY_S, POINT_S, WAYPOINTS);
-    for (int i = 0; i < ARM_DOF; ++i)
+    for (int i = 0; i < ARM_DOF; ++i) {
       r.arm_left[i] = STANCE[ARM_LEFT_FIRST + i];
+      r.arm_from[i] = r.arm_left[i];
+      r.arm_to[i] = r.arm_left[i];
+    }
   }
 
   for (int i = 0; i < ARM_DOF; ++i) {
@@ -1809,32 +1817,52 @@ int run(
         const bool arms_walk = r.released_once;
         if (elapsed >= 0.0) r.released_once = true;
         if (arms_walk && r.alive) {
-          const int draws = ARM_DRAWS;
-          for (int draw = 0; draw < draws; ++draw) {
-            double cand[ARM_DOF];
+          const int window = int(elapsed / ARM_TARGET_S);
+          if (window != r.arm_window) {
+            r.arm_window = window;
             for (int i = 0; i < ARM_DOF; ++i) {
-              cand[i] = std::clamp(
-                  r.arm_left[i] +
-                      ARM_STEP_RAD * random_between(r.arm_rng, -1.0, 1.0),
-                  r.arm_lo[i],
-                  r.arm_hi[i]
-              );
+              r.arm_from[i] = r.arm_left[i];
+              r.arm_to[i] = r.arm_left[i];
             }
+            for (int draw = 0; draw < ARM_DRAWS; ++draw) {
+              double cand[ARM_DOF];
+              for (int i = 0; i < ARM_DOF; ++i) cand[i] = r.arm_from[i];
+              for (int k = 0; k < ARM_TICKS; ++k) {
+                for (int i = 0; i < ARM_DOF; ++i) {
+                  cand[i] = std::clamp(
+                      cand[i] +
+                          ARM_STEP_RAD * random_between(r.arm_rng, -1.0, 1.0),
+                      r.arm_lo[i],
+                      r.arm_hi[i]
+                  );
+                }
+              }
 
-            for (int i = 0; i < ARM_DOF; ++i) {
-              q_of_body[size_t(arm_body[0][i])] = cand[i];
-              q_of_body[size_t(arm_body[1][i])] = ARM_MIRROR[i] * cand[i];
+              for (int i = 0; i < ARM_DOF; ++i) {
+                q_of_body[size_t(arm_body[0][i])] = cand[i];
+                q_of_body[size_t(arm_body[1][i])] = ARM_MIRROR[i] * cand[i];
+              }
+              bool ok = true;
+              for (int side = 0; side < 2 && ok; ++side) {
+                double blo[3], bhi[3];
+                hand_box(model, arm_bounds, q_of_body.data(), side, blo, bhi);
+                if (blo[0] < arm_bounds.front_m || bhi[2] > arm_bounds.head_m)
+                  ok = false;
+              }
+              if (!ok) continue;
+              for (int i = 0; i < ARM_DOF; ++i) r.arm_to[i] = cand[i];
+              break;
             }
-            bool ok = true;
-            for (int side = 0; side < 2 && ok; ++side) {
-              double blo[3], bhi[3];
-              hand_box(model, arm_bounds, q_of_body.data(), side, blo, bhi);
-              if (blo[0] < arm_bounds.front_m || bhi[2] > arm_bounds.head_m)
-                ok = false;
-            }
-            if (!ok && draws > 1) continue;
-            for (int i = 0; i < ARM_DOF; ++i) r.arm_left[i] = cand[i];
-            break;
+          }
+          const double phase = std::clamp(
+              (elapsed - double(r.arm_window) * ARM_TARGET_S + PERIOD_S) /
+                  ARM_TARGET_S,
+              0.0,
+              1.0
+          );
+          for (int i = 0; i < ARM_DOF; ++i) {
+            r.arm_left[i] =
+                r.arm_from[i] + (r.arm_to[i] - r.arm_from[i]) * phase;
           }
         }
         float* arm = h_arm.data() + size_t(e) * NUM_MOTOR;
