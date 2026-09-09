@@ -5,23 +5,31 @@ cd "$(dirname "$0")"
 RUNS=${RUNS:-1024}
 ROUNDS=${ROUNDS:-8}
 SONIC_DIV=${SONIC_DIV:-8}
-MJOBS=${MJOBS:-2}
+MJOBS=${MJOBS:-3}
 PJOBS=${PJOBS:-3}
 NICE=${NICE:-10}
 CPUS=1-$(($(nproc) - 1))
 MTHREADS=${MTHREADS:-$((($(nproc) - 1) * 3 / MJOBS))}
 export RUNS SONIC_DIV CPUS NICE
 
-POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done)
-POLICIES="$POLICIES clobot_with_arms handoff_with_arms"
+#POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
+#  grep -v '^decoupled_wbc$')
+#POLICIES="$POLICIES clobot_with_arms handoff_with_arms"
+#POLICIES="$POLICIES decoupled_wbc_h070_p000 decoupled_wbc_h066_p000"
+#POLICIES="$POLICIES decoupled_wbc_h066_p012"
+
+POLICIES="decoupled_wbc_h066_p000 decoupled_wbc_h066_p012"
 
 RUN='
+  ROUND=$0
+  P=$1
+  R=$(printf "r%02d" "$ROUND")
   n=$RUNS
-  [ "$0" = sonic ] && n=$((RUNS / SONIC_DIV))
+  [ "$P" = sonic ] && n=$((RUNS / SONIC_DIV))
   f=$((ROUND * n))
-  out=$R.$0.$ENGINE
+  out=$R.$P.$ENGINE
   if chrt --idle 0 nice -n "$NICE" taskset -c "$CPUS" build/teleop-walking-benchmark \
-      --engine "$ENGINE" --policy "$0" --runids "$f-$((f + n - 1))" --threads "$TH" \
+      --engine "$ENGINE" --policy "$P" --runids "$f-$((f + n - 1))" --threads "$TH" \
       --csv "results/$out.csv" >"progress/$out.log" 2>&1; then
     grep "^mujoco:" "progress/$out.log" | sed "s|^|$out |" >>benchmark.log
   else
@@ -45,10 +53,22 @@ done &
 MON=$!
 trap 'kill $MON 2>/dev/null || true' EXIT
 
-for r in $(seq 0 $((ROUNDS - 1))); do
-  export ROUND=$r R=$(printf 'r%02d' "$r")
-  printf '%s\n' $POLICIES | ENGINE=mujoco TH=$MTHREADS xargs -P "$MJOBS" -n 1 bash -c "$RUN" &
-  M=$!
-  printf '%s\n' $POLICIES | ENGINE=physx TH=1 xargs -P "$PJOBS" -n 1 bash -c "$RUN" &
-  wait "$M" "$!"
-done
+# TEMPORARY: no barrier between rounds -- every round x policy job goes into one
+# flat queue, so xargs starts the next job as soon as a slot frees. Restore the
+# loop below to go back to round-at-a-time.
+#
+# for r in $(seq 0 $((ROUNDS - 1))); do
+#   export ROUND=$r R=$(printf 'r%02d' "$r")
+#   printf '%s\n' $POLICIES | ENGINE=mujoco TH=$MTHREADS xargs -P "$MJOBS" -n 1 bash -c "$RUN" &
+#   M=$!
+#   printf '%s\n' $POLICIES | ENGINE=physx TH=1 xargs -P "$PJOBS" -n 1 bash -c "$RUN" &
+#   wait "$M" "$!"
+# done
+
+JOBS=$(for r in $(seq 0 $((ROUNDS - 1))); do for p in $POLICIES; do echo "$r $p"; done; done)
+
+printf '%s\n' "$JOBS" | ENGINE=mujoco TH=$MTHREADS xargs -P "$MJOBS" -n 2 bash -c "$RUN" &
+M=$!
+printf '%s\n' "$JOBS" | ENGINE=physx TH=1 xargs -P "$PJOBS" -n 2 bash -c "$RUN" &
+P=$!
+wait "$M" "$P"

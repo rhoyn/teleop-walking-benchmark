@@ -37,14 +37,16 @@ in `build/trt/`; inference is under 3% of a run.
 
 ## Results
 
-506,112 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
+538,880 runs — eight rounds of 1024 run ids, both engines, except that `sonic`
 runs 128 a round and round 0 is short for `amo` and `asap`. A run id
 names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 
 | `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
 |---:|---:|---:|---:|---:|
+| `decoupled_wbc_h066_p012` | **77/84 %** | 12 cm / 6° | 5260 J | 1790 |
+| `decoupled_wbc_h066_p000` | **78/83 %** | 13 cm / 6° | 5419 J | 1844 |
 | `gr00t_wbc` | **77/78 %** | 15 cm / 5° | 6037 J | 1606 |
-| `decoupled_wbc` | **75/80 %** | 13 cm / 6° | 5463 J | 1825 |
+| `decoupled_wbc_h070_p000` | **75/80 %** | 13 cm / 6° | 5463 J | 1825 |
 | `homie` | **69/73 %** | 21 cm / 39° | 7149 J | 1934 |
 | `grove` | **62/77 %** | 21 cm / 6° | 8692 J | 2382 |
 | `amo` | **64/73 %** | 36 cm / 16° | 7832 J | 1618 |
@@ -78,8 +80,14 @@ names one whole task; MuJoCo repeats bit for bit, PhysX does not.
 
 `gr00t_wbc` is HOMIE v2, not an independent policy family. Its author
 developed it at GEAR as the successor to `homie`, with substantial
-optimisations across the stack, so first and third place here are the same
-lineage. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
+optimisations across the stack, so `gr00t_wbc` and `homie` are the same lineage
+rather than separate entries. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
+
+`decoupled_wbc` appears three times under different commanded postures, `h`
+naming the commanded torso height in metres and `p` the commanded torso pitch
+in radians. `h070_p000` is the configuration its authors call canonical; the
+two `h066` rows are the height and posture ablation they suggested, and both
+beat it. Recommended by @chrisyrniu in chrisyrniu/IsaacLab-Decoupled-WBC#1.
 
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
 

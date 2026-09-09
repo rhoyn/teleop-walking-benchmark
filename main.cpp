@@ -689,22 +689,40 @@ void engine_run(
 namespace {
 
 const char* const NAMES[] = {
-    "gr00t_wbc",     "amo",
-    "asap",          "bfm_zero",
-    "clobot",        "clobot_with_arms",
-    "decoupled_wbc", "dm_agile",
-    "dm_march",      "falcon",
-    "g1_gym",        "grove",
-    "handoff",       "handoff_with_arms",
-    "holosoma",      "homie",
-    "legged_rl_lab", "mimic_lite",
-    "nanog1",        "openwbt",
-    "rl_gym",        "rl_lab",
-    "rl_mjlab",      "robomimic",
-    "run_residual",  "schoi",
-    "sonic",         "stepdown",
-    "wbc_agile",     "wcompton",
-    "wty_cpp",       "zealot",
+    "gr00t_wbc",
+    "amo",
+    "asap",
+    "bfm_zero",
+    "clobot",
+    "clobot_with_arms",
+    "decoupled_wbc_h070_p000",
+    "decoupled_wbc_h066_p000",
+    "decoupled_wbc_h066_p012",
+    "dm_agile",
+    "dm_march",
+    "falcon",
+    "g1_gym",
+    "grove",
+    "handoff",
+    "handoff_with_arms",
+    "holosoma",
+    "homie",
+    "legged_rl_lab",
+    "mimic_lite",
+    "nanog1",
+    "openwbt",
+    "rl_gym",
+    "rl_lab",
+    "rl_mjlab",
+    "robomimic",
+    "run_residual",
+    "schoi",
+    "sonic",
+    "stepdown",
+    "wbc_agile",
+    "wcompton",
+    "wty_cpp",
+    "zealot",
 };
 
 }
@@ -721,7 +739,12 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
   if (name == "clobot") return std::make_unique<clobot::Policy>();
   if (name == "clobot_with_arms")
     return std::make_unique<clobot::WithArmsPolicy>();
-  if (name == "decoupled_wbc") return std::make_unique<decoupled_wbc::Policy>();
+  if (name == "decoupled_wbc_h070_p000")
+    return std::make_unique<decoupled_wbc::PolicyH070P000>();
+  if (name == "decoupled_wbc_h066_p000")
+    return std::make_unique<decoupled_wbc::PolicyH066P000>();
+  if (name == "decoupled_wbc_h066_p012")
+    return std::make_unique<decoupled_wbc::PolicyH066P012>();
   if (name == "dm_agile") return std::make_unique<dm_agile::Policy>();
   if (name == "dm_march") return std::make_unique<dm_march::Policy>();
   if (name == "falcon") return std::make_unique<falcon::Policy>();

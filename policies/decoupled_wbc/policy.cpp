@@ -5,9 +5,11 @@ constexpr int FRAME = 58;
 constexpr int HISTORY = 2;
 constexpr int NUM_OBS = FRAME * HISTORY;
 constexpr float ACTION_SCALE = 0.25f;
-constexpr float CMD_HEIGHT = 0.70f;
-constexpr float CMD_BODY_ROLL = 0.0f, CMD_BODY_PITCH = 0.0f,
+constexpr float CMD_HEIGHT_H070 = 0.70f;
+constexpr float CMD_HEIGHT_H066 = 0.66f;
+constexpr float CMD_BODY_ROLL = 0.0f, CMD_BODY_PITCH_P000 = 0.0f,
                 CMD_BODY_YAW = 0.0f;
+constexpr float CMD_BODY_PITCH_P012 = 0.12f;
 
 constexpr int WAIST_PITCH = 14;
 constexpr float WAIST_PITCH_MIN = -0.60f, WAIST_PITCH_MAX = 0.60f;
@@ -44,6 +46,8 @@ __global__ void k_decoupled_wbc_obs(
     const float* __restrict__ cmd,
     const float* __restrict__ last_action,
     float* __restrict__ obs,
+    float cmd_height,
+    float cmd_body_pitch,
     int envs
 ) {
   const int env = blockIdx.x * blockDim.x + threadIdx.x;
@@ -58,9 +62,9 @@ __global__ void k_decoupled_wbc_obs(
     f[3 + k] = gravity[env * 3 + k];
     f[6 + k] = cmd[env * 3 + k];
   }
-  f[9] = CMD_HEIGHT;
+  f[9] = cmd_height;
   f[10] = CMD_BODY_ROLL;
-  f[11] = CMD_BODY_PITCH;
+  f[11] = cmd_body_pitch;
   f[12] = CMD_BODY_YAW;
 
   for (int j = 0; j < NUM_ACTIONS; ++j) {
@@ -93,12 +97,21 @@ __global__ void k_decoupled_wbc_act(
   *w = fminf(fmaxf(*w, WAIST_PITCH_MIN), WAIST_PITCH_MAX);
 }
 
-struct Policy : policy_api::Policy {
+struct Base : policy_api::Policy {
   std::shared_ptr<policy_api::Engine> engine;
   float *d_obs = nullptr, *d_act = nullptr, *d_last = nullptr;
   int envs = 0;
+  const float cmd_height;
+  const float cmd_body_pitch;
 
-  ~Policy() override {
+  Base(
+      float height,
+      float pitch
+  )
+      : cmd_height(height),
+        cmd_body_pitch(pitch) {}
+
+  ~Base() override {
     for (void* p : {(void*)d_obs, (void*)d_act, (void*)d_last}) {
       if (p) cudaFree(p);
     }
@@ -129,6 +142,8 @@ struct Policy : policy_api::Policy {
         c.cmd,
         d_last,
         d_obs,
+        cmd_height,
+        cmd_body_pitch,
         envs
     );
     policy_api::engine_run(*engine, d_obs, d_act, envs);
@@ -145,7 +160,32 @@ struct Policy : policy_api::Policy {
   const float* kd() const override { return KDS; }
   int owned() const override { return NUM_ACTIONS; }
   policy_api::Limits limits() const override { return LIMITS; }
-  const char* name() const override { return "decoupled_wbc"; }
 };
 
+struct PolicyH070P000 : Base {
+  PolicyH070P000()
+      : Base(
+            CMD_HEIGHT_H070,
+            CMD_BODY_PITCH_P000
+        ) {}
+  const char* name() const override { return "decoupled_wbc_h070_p000"; }
+};
+
+struct PolicyH066P000 : Base {
+  PolicyH066P000()
+      : Base(
+            CMD_HEIGHT_H066,
+            CMD_BODY_PITCH_P000
+        ) {}
+  const char* name() const override { return "decoupled_wbc_h066_p000"; }
+};
+
+struct PolicyH066P012 : Base {
+  PolicyH066P012()
+      : Base(
+            CMD_HEIGHT_H066,
+            CMD_BODY_PITCH_P012
+        ) {}
+  const char* name() const override { return "decoupled_wbc_h066_p012"; }
+};
 }
