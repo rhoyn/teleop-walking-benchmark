@@ -39,12 +39,12 @@ real thing. The committed files verify against this record as committed, and
 refuses a download that does not match it.
 
   amo  policies/amo/model.pt  6d86  Apache-2.0, sim only  ./download_weights.sh
-  amo  policies/amo/model.onnx  0f4d  Apache-2.0, sim only  committed, from model.pt
+  amo  policies/amo/model.onnx  3de2  Apache-2.0, sim only  committed, from model.pt
     OpenTeleVision/AMO, amo_jit.pt
     https://github.com/OpenTeleVision/AMO
 
   amo  policies/amo/model_adapter.pt  159c  Apache-2.0, sim only  ./download_weights.sh
-  amo  policies/amo/model_adapter.onnx  7e24  Apache-2.0, sim only  committed, from model_adapter.pt
+  amo  policies/amo/model_adapter.onnx  fbc0  Apache-2.0, sim only  committed, from model_adapter.pt
     OpenTeleVision/AMO, adapter_jit.pt
 
   asap  policies/asap/model.onnx  188a  MIT  committed
@@ -80,7 +80,7 @@ refuses a download that does not match it.
     https://github.com/GalaxyGeneralRobotics/OpenWBT
 
   rl_gym  policies/rl_gym/model.pt  cf66  BSD-3-Clause  ./download_weights.sh
-  rl_gym  policies/rl_gym/model.onnx  860a  BSD-3-Clause  committed, from model.pt
+  rl_gym  policies/rl_gym/model.onnx  32c4  BSD-3-Clause  committed, from model.pt
     unitreerobotics/unitree_rl_gym, deploy/pre_train/g1/motion.pt
     https://github.com/unitreerobotics/unitree_rl_gym
 
@@ -93,7 +93,7 @@ refuses a download that does not match it.
     https://github.com/unitreerobotics/unitree_rl_mjlab
 
   robomimic  policies/robomimic/model.pt  d1d9  NONE DECLARED  ./download_weights.sh
-  robomimic  policies/robomimic/model.onnx  edf6  NONE DECLARED  ./export_onnx.py, from model.pt
+  robomimic  policies/robomimic/model.onnx  6684  NONE DECLARED  ./export_onnx.py, from model.pt
     ccrpRepo/RoboMimic_Deploy, .../policy_29dof.pt
     https://github.com/ccrpRepo/RoboMimic_Deploy
 
@@ -109,7 +109,7 @@ refuses a download that does not match it.
     https://github.com/LeCAR-Lab/BFM-Zero
 
   bfm_zero  policies/bfm_zero/reward_locomotion.pkl  1b97  CC BY-NC 4.0, NON-COMMERCIAL  ./download_weights.sh
-  bfm_zero  policies/bfm_zero/latents.csv  1f65  CC BY-NC 4.0, NON-COMMERCIAL  ./export_onnx.py, from reward_locomotion.pkl
+  bfm_zero  policies/bfm_zero/latents.csv  7933  CC BY-NC 4.0, NON-COMMERCIAL  ./export_onnx.py, from reward_locomotion.pkl
     LeCAR-Lab/BFM-Zero, model/reward_inference/reward_locomotion.pkl
     latents.csv is the twelve latents this policy commands by name, each read
     out of that pickle and written one per row
@@ -187,7 +187,7 @@ refuses a download that does not match it.
     https://github.com/NVlabs/GR00T-WholeBodyControl
 
   stepdown  policies/stepdown/model.pt  3c3d  NONE DECLARED  ./download_weights.sh
-  stepdown  policies/stepdown/model.onnx  2030  NONE DECLARED  ./export_onnx.py, from model.pt
+  stepdown  policies/stepdown/model.onnx  79bd  NONE DECLARED  ./export_onnx.py, from model.pt
     arushbisht12/unitree-g1-stepdown-safety, safety_motion.pt -- not the
     motion.pt beside it, which is a different network
     https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety
