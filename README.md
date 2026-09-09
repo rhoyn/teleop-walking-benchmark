@@ -83,6 +83,18 @@ lineage. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
 
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
 
+### What a low score means
+
+This benchmark scores a **walking policy that controls the lower body while the
+upper body is driven externally**. The 15 leg and waist joints belong to the
+policy; the 14 arm joints random-walk under the harness for the whole run.
+
+Several policies score badly because they were trained to swing their arms to
+keep balance, and that is not available to them here — the arms are assumed to
+belong to a separate policy. **A low score is therefore not always a statement
+that the policy is bad.** It often means the policy was never built for
+lower-body balance under external upper-body control.
+
 ## MuJoCo vs Isaac Sim engine: PhysX
 
 Each row is one policy run twice — the same exported weights, the same
