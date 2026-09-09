@@ -280,6 +280,8 @@
     <framequat     name="imu_quat"   objtype="site" objname="imu_in_pelvis"/>
     <gyro          name="imu_gyro"   site="imu_in_pelvis"/>
     <accelerometer name="imu_acc"    site="imu_in_pelvis"/>
+    <framelinvel    name="pelvis_vel" objtype="body" objname="pelvis"/>
+    <framelinvel    name="torso_vel"  objtype="body" objname="torso_link"/>
   </sensor>
 
   <statistic center="0 0 0.8" extent="2.0"/>

@@ -63,10 +63,7 @@ std::unique_ptr<Physics> physics_make_physx(
     double spacing
 );
 
-std::unique_ptr<Physics> physics_make_mujoco(
-    const mjcf::Model& model,
-    const std::string& model_path,
-    int envs,
-    double spacing,
-    int threads
+std::unique_ptr<Physics> physics_make_mjwarp(
+    const std::string& graph_path,
+    int envs
 );

@@ -1581,8 +1581,7 @@ int run(
   std::string record_dir;
   std::string policy_name = "gr00t_wbc_h074_p000";
   PhysicsEngine engine = PhysicsEngine::kPhysx;
-  int threads = int(std::thread::hardware_concurrency());
-  if (threads < 1) threads = 1;
+  std::string graph_path = "build/mjwarp/g1";
   for (int i = 1; i < argc; ++i) {
     if (!std::strcmp(argv[i], "--runs") && i + 1 < argc)
       envs = std::atoi(argv[++i]);
@@ -1594,13 +1593,13 @@ int run(
       walk_s = std::atof(argv[++i]);
     else if (!std::strcmp(argv[i], "--init") && i + 1 < argc)
       init_s = std::atof(argv[++i]);
-    else if (!std::strcmp(argv[i], "--threads") && i + 1 < argc)
-      threads = std::max(1, std::atoi(argv[++i]));
+    else if (!std::strcmp(argv[i], "--graph") && i + 1 < argc)
+      graph_path = argv[++i];
     else if (!std::strcmp(argv[i], "--engine") && i + 1 < argc) {
       const std::string want = argv[++i];
       if (want == "physx") {
         engine = PhysicsEngine::kPhysx;
-      } else if (want == "mujoco") {
+      } else if (want == "mujoco" || want == "mjwarp") {
         engine = PhysicsEngine::kMujoco;
       } else {
         std::fprintf(stderr, "unknown --engine '%s'\n", want.c_str());
@@ -1627,7 +1626,7 @@ int run(
       std::printf(
           "usage: teleop-walking-benchmark [options]\n"
           "  --engine NAME     mujoco or physx (default physx)\n"
-          "  --threads N       mujoco fleet shards (default: cores)\n"
+          "  --graph PATH      mujoco APIC capture (default build/mjwarp/g1)\n"
           "  --policy NAME     which candidate to drive (default "
           "gr00t_wbc_h074_p000)\n"
           "  --runs N          fleet size, one robot per run id (default 256)\n"
@@ -1654,10 +1653,15 @@ int run(
   }
   const std::string model_path = "assets/g1_29dof.xml";
   const mjcf::Model model = mjcf::load(model_path);
-  std::unique_ptr<Physics> phys =
-      engine == PhysicsEngine::kPhysx
-          ? physics_make_physx(model, envs, 4.0)
-          : physics_make_mujoco(model, model_path, envs, 4.0, threads);
+  std::unique_ptr<Physics> phys;
+  switch (engine) {
+    case PhysicsEngine::kPhysx:
+      phys = physics_make_physx(model, envs, 4.0);
+      break;
+    case PhysicsEngine::kMujoco:
+      phys = physics_make_mjwarp(graph_path, envs);
+      break;
+  }
 
   std::unique_ptr<policy_api::Policy> pol = make_policy(policy_name);
   pol->init(envs);
@@ -1937,52 +1941,6 @@ int run(
         for (int k = 0; k < 3; ++k) h_cmd[size_t(e) * 3 + k] = float(cmd[k]);
       }
 
-      if (getenv("TRACE") != nullptr && elapsed >= 0.0 &&
-          elapsed <= 1.0 + 1e-9) {
-        static bool header = false;
-        if (!header) {
-          std::printf("t,px,py,pz,qw,qx,qy,qz");
-          for (int i = 0; i < NUM_MOTOR; ++i) std::printf(",q%d", i);
-          for (int i = 0; i < NUM_MOTOR; ++i) std::printf(",tq%d", i);
-          std::printf(",lfz,rfz\n");
-          header = true;
-        }
-        std::vector<float> mq(size_t(envs) * NUM_MOTOR),
-            tq(size_t(envs) * NUM_MOTOR);
-        cudaMemcpy(
-            mq.data(),
-            phys->motor_q(),
-            mq.size() * sizeof(float),
-            cudaMemcpyDeviceToHost
-        );
-        cudaMemcpy(
-            tq.data(),
-            phys->q_target(),
-            tq.size() * sizeof(float),
-            cudaMemcpyDeviceToHost
-        );
-        const float* p0 = phys->base_pose();
-
-        std::printf(
-            "%.4f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f",
-            elapsed,
-            p0[4],
-            p0[5],
-            p0[6],
-            p0[3],
-            p0[0],
-            p0[1],
-            p0[2]
-        );
-        for (int i = 0; i < NUM_MOTOR; ++i) std::printf(",%.6f", mq[i]);
-        for (int i = 0; i < NUM_MOTOR; ++i) std::printf(",%.6f", tq[i]);
-        std::printf(
-            ",%.6f,%.6f",
-            phys->foot_height()[0],
-            phys->foot_height()[1]
-        );
-        std::printf("\n");
-      }
       phys->set_punches(h_punch.data());
       upload_floats(h_cmd, d_cmd);
       upload_floats(h_task, d_task);

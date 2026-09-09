@@ -10,7 +10,6 @@ PJOBS=${PJOBS:-3}
 NICE=${NICE:-10}
 DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
-MTHREADS=${MTHREADS:-$((($(nproc) - 1) * 3 / MJOBS))}
 export RUNS SONIC_DIV CPUS NICE DELAY
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
@@ -30,7 +29,7 @@ RUN='
   f=$((ROUND * n))
   out=$R.$P.$ENGINE
   if chrt --idle 0 nice -n "$NICE" taskset -c "$CPUS" build/teleop-walking-benchmark \
-      --engine "$ENGINE" --policy "$P" --runids "$f-$((f + n - 1))" --threads "$TH" \
+      --engine "$ENGINE" --policy "$P" --runids "$f-$((f + n - 1))" \
       --csv "results/$out.csv" >"progress/$out.log" 2>&1; then
     grep "^mujoco:" "progress/$out.log" | sed "s|^|$out |" >>benchmark.log
   else
@@ -40,6 +39,7 @@ RUN='
   rm -f "progress/$out.log"'
 
 chrt --idle 0 nice -n "$NICE" taskset -c "$CPUS" make
+make capture MJWARP_NWORLD="$RUNS"
 mkdir -p results progress
 rm -f progress/*.log benchmark.log
 
@@ -56,8 +56,8 @@ trap 'kill $MON 2>/dev/null || true' EXIT
 
 JOBS=$(for r in $(seq 0 $((ROUNDS - 1))); do for p in $POLICIES; do echo "$r $p"; done; done)
 
-printf '%s\n' "$JOBS" | ENGINE=mujoco TH=$MTHREADS xargs -P "$MJOBS" -n 2 bash -c "$RUN" &
+printf '%s\n' "$JOBS" | ENGINE=mujoco xargs -P "$MJOBS" -n 2 bash -c "$RUN" &
 M=$!
-printf '%s\n' "$JOBS" | ENGINE=physx TH=1 xargs -P "$PJOBS" -n 2 bash -c "$RUN" &
+printf '%s\n' "$JOBS" | ENGINE=physx xargs -P "$PJOBS" -n 2 bash -c "$RUN" &
 P=$!
 wait "$M" "$P"

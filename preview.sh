@@ -28,7 +28,7 @@ RUN='
   sleep $((RANDOM % (DELAY + 1)))
   out=$WORK/$1/$0
   nice -n "$NICE" taskset -c "$CPUS" "$BIN" --engine "$1" --policy "$0" \
-    --runid "$RUNID" --threads 1 --record "$WORK/$1" --csv "$out.csv" \
+    --runid "$RUNID" --record "$WORK/$1" --csv "$out.csv" \
     >"$out.log" 2>&1 &&
     echo "[$(ls "$WORK"/*/*.mp4 2>/dev/null | wc -l)/$TOTAL] $0 on $1" ||
     echo "FAILED $0 on $1" >&2'

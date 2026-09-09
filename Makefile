@@ -43,7 +43,7 @@ PX_LDLIBS := -L$(PXLIB) -Wl,--start-group \
              -Wl,--disable-new-dtags -Wl,-rpath,'$(PXRPATH)':$(TRT)/lib:$(CUDA)/lib64:$(MUJOCO)/lib
 
 OBJS := $(BUILD)/main.o $(BUILD)/model.o $(BUILD)/physics_physx.o \
-        $(BUILD)/physics_mujoco.o
+        $(BUILD)/physics_mjwarp.o
 
 $(BUILD)/main.o: main.cpp $(POLICIES) model.h physics.h physics_physx.h Makefile | $(BUILD)
 	@echo "NVCC main.cpp"
@@ -57,9 +57,9 @@ $(BUILD)/physics_physx.o: physics_physx.cpp physics_physx.h physics.h model.h Ma
 	@echo "NVCC physics_physx.cpp"
 	@$(NVCC) $(PX_NVFLAGS) -x cu -c physics_physx.cpp -o $@
 
-$(BUILD)/physics_mujoco.o: physics_mujoco.cpp physics.h model.h Makefile | $(BUILD)
-	@echo "NVCC physics_mujoco.cpp"
-	@$(NVCC) $(PX_NVFLAGS) -c physics_mujoco.cpp -o $@
+$(BUILD)/physics_mjwarp.o: physics_mjwarp.cpp physics.h model.h Makefile | $(BUILD)
+	@echo "NVCC physics_mjwarp.cpp"
+	@$(NVCC) $(PX_NVFLAGS) -x cu -c physics_mjwarp.cpp -o $@
 
 $(BIN): $(OBJS)
 	@echo "LD  $@"
@@ -78,6 +78,14 @@ physx-sdk:
 	cd $(PHYSX) && CUDACXX=$(NVCC) PATH=$(CUDA)/bin:$$PATH ./generate_projects.sh $(PHYSX_PRESET)
 	$(MAKE) -C $(PHYSX)/compiler/$(PHYSX_PRESET)-release -j$(shell nproc)
 
+MJWARP_NWORLD ?= 1024
+MJWARP_GRAPH  ?= $(BUILD)/mjwarp/g1
+
+.PHONY: capture
+
+capture:
+	./mjwarp_capture.sh --nworld $(MJWARP_NWORLD) --out $(MJWARP_GRAPH)
+
 TABLE := $(BUILD)/table
 
 table: $(TABLE)
@@ -94,6 +102,7 @@ info:
 	@echo "eigen:    $(EIGEN)"
 	@echo "physx:    $(PHYSX)"
 	@echo "policies: $(words $(POLICIES)) files"
+	@echo "mjwarp:   $(MJWARP_GRAPH) (nworld $(MJWARP_NWORLD))"
 
 $(BUILD):
 	@mkdir -p $@
