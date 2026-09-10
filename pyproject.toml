@@ -1,0 +1,11 @@
+[project]
+name = "teleop-walking-benchmark"
+version = "0"
+requires-python = "==3.14.6"
+dependencies = [
+    "mujoco==3.12.0",
+    "mujoco-warp==3.12.0",
+    "onnx==1.22.0",
+    "onnxruntime==1.29.0",
+    "torch==2.14.0",
+]

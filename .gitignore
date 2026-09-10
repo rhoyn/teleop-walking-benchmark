@@ -8,6 +8,7 @@
 __pycache__/
 benchmark.log
 build/
+.venv/
 policies/bfm_zero/latents.csv
 policies/bfm_zero/model.onnx
 policies/dm_agile/model.onnx
