@@ -46,8 +46,8 @@ fleet size — re-record when the model or `--runs` changes:
 608,256 runs — four rounds of 2048 run ids, both engines, except that `sonic`
 runs 256 a round. A run id names one whole task.
 
-Both columns were measured on the GPU: MuJoCo through MuJoCo Warp, PhysX
-through its GPU solver.
+Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX through its
+GPU solver.
 
 | `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
 |---:|---:|---:|---:|---:|
@@ -145,10 +145,10 @@ engine's contacts; one that scores in both survives a change of contact model
 it never saw in training, which is the best proxy here for sim-to-real
 transfer. Read the two numbers together, not separately.
 
-Neither engine repeats a run id bit for bit any more: both reduce contact
-forces across GPU threads in arbitrary order, so the same run id can pass one
-round and fall the next. MuJoCo repeated exactly while it stepped on the CPU;
-it no longer does.
+Neither engine repeats a run id bit for bit: both step on the GPU and reduce
+contact forces across threads in arbitrary order, so the same run id can pass
+one round and fall the next. Compare aggregates across rounds, not individual
+run ids.
 
 ## Weights
 
