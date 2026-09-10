@@ -347,8 +347,7 @@ def export_batched(
     many = ort.InferenceSession(dst, providers=["CPUExecutionProvider"])
     per_row = [one.run(None, {n: v[r] for n, v in feed.items()}) for r in range(batch)]
     ref = [
-        np.stack([per_row[r][k] for r in range(batch)])
-        for k in range(len(per_row[0]))
+        np.stack([per_row[r][k] for r in range(batch)]) for k in range(len(per_row[0]))
     ]
     agree(dst, ref, many.run(None, feed))
 
