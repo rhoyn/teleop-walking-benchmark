@@ -1,9 +1,10 @@
 namespace zealot {
 
 constexpr int NUM_ACTIONS = 12;
-constexpr int FRAME = 53;
+constexpr int FRAME_V28 = 53;
+constexpr int FRAME_V26 = 48;
+constexpr int FRAME_MAX = FRAME_V28;
 constexpr int HISTORY = 5;
-constexpr int NUM_OBS = HISTORY * FRAME;
 
 constexpr float CONTROL_DT = 0.02f;
 constexpr float ACTION_SCALE = 0.5f;
@@ -111,6 +112,7 @@ __global__ void k_zealot_obs(
     float* __restrict__ prev_q,
     float* __restrict__ drive,
     float* __restrict__ obs,
+    int frame,
     int first,
     int envs
 ) {
@@ -121,8 +123,8 @@ __global__ void k_zealot_obs(
   zealot_shape(cmd + env * 3, task + env * 4, d);
   for (int k = 0; k < 3; ++k) drive[env * 3 + k] = d[k];
 
-  float f[FRAME];
-  for (int i = 0; i < FRAME; ++i) f[i] = 0.0f;
+  float f[FRAME_MAX];
+  for (int i = 0; i < frame; ++i) f[i] = 0.0f;
 
   for (int i = 0; i < NUM_ACTIONS; ++i) {
     f[OFF_ACT_LAG2 + i] = act_lag2[size_t(env) * NUM_ACTIONS + i];
@@ -147,14 +149,14 @@ __global__ void k_zealot_obs(
   f[OFF_SIN_PHASE] = sinf(2.0f * float(M_PI) * ph);
   f[OFF_COS_PHASE] = cosf(2.0f * float(M_PI) * ph);
 
-  float* o = obs + size_t(env) * NUM_OBS;
+  float* o = obs + size_t(env) * size_t(frame) * HISTORY;
   if (first) {
     for (int h = 0; h < HISTORY; ++h) {
-      for (int i = 0; i < FRAME; ++i) o[h * FRAME + i] = f[i];
+      for (int i = 0; i < frame; ++i) o[h * frame + i] = f[i];
     }
   } else {
-    for (int i = 0; i < FRAME * (HISTORY - 1); ++i) o[i] = o[i + FRAME];
-    for (int i = 0; i < FRAME; ++i) o[FRAME * (HISTORY - 1) + i] = f[i];
+    for (int i = 0; i < frame * (HISTORY - 1); ++i) o[i] = o[i + frame];
+    for (int i = 0; i < frame; ++i) o[frame * (HISTORY - 1) + i] = f[i];
   }
 }
 
@@ -201,6 +203,9 @@ __global__ void k_zealot_act(
 }
 
 struct Policy : policy_api::Policy {
+  virtual int frame() const { return FRAME_V28; }
+  virtual const char* onnx() const { return "policies/zealot/model.onnx"; }
+
   std::shared_ptr<policy_api::Engine> engine;
   float *d_obs = nullptr, *d_act = nullptr, *d_lag1 = nullptr,
         *d_lag2 = nullptr;
@@ -223,17 +228,13 @@ struct Policy : policy_api::Policy {
 
   void init(int n) override {
     envs = n;
-    engine = policy_api::engine_make(
-        "policies/zealot/model.onnx",
-        n,
-        NUM_OBS,
-        NUM_ACTIONS
-    );
+    const int num_obs = frame() * HISTORY;
+    engine = policy_api::engine_make(onnx(), n, num_obs, NUM_ACTIONS);
     auto zeros = [n](float** p, size_t per) {
       cudaMalloc(p, size_t(n) * per * sizeof(float));
       cudaMemset(*p, 0, size_t(n) * per * sizeof(float));
     };
-    zeros(&d_obs, NUM_OBS);
+    zeros(&d_obs, size_t(num_obs));
     zeros(&d_act, NUM_ACTIONS);
     zeros(&d_lag1, NUM_ACTIONS);
     zeros(&d_lag2, NUM_ACTIONS);
@@ -257,6 +258,7 @@ struct Policy : policy_api::Policy {
         d_prev_q,
         d_drive,
         d_obs,
+        frame(),
         first,
         envs
     );
@@ -279,6 +281,12 @@ struct Policy : policy_api::Policy {
   int owned() const override { return NUM_ACTIONS; }
   policy_api::Limits limits() const override { return LIMITS; }
   const char* name() const override { return "zealot"; }
+};
+
+struct V26Policy : Policy {
+  int frame() const override { return FRAME_V26; }
+  const char* onnx() const override { return "policies/zealot/model_v26.onnx"; }
+  const char* name() const override { return "zealot_v26"; }
 };
 
 }

@@ -10,13 +10,15 @@ recorded here.
 1. POLICY CHECKPOINTS
 -------------------------------------------------------------------------------
 
-Thirty policies, and every checkpoint they load is third-party. Nineteen
+Thirty-four policies, and every checkpoint they load is third-party. Nineteen
 weight files are committed beside the policy that loads them; ./download_weights.sh
-pulls twenty-one from their upstream repositories, so you take those under the
+pulls twenty-seven from their upstream repositories, so you take those under the
 upstream's terms rather than under this repository's; ./export_onnx.py writes
-six on your machine -- four ONNX conversions, sonic's retyped planner and
-bfm_zero's latent table. Every checkpoint can now be obtained automatically:
-wcompton's, the one exception until its upstream came back, is fetched again.
+eight on your machine -- six ONNX conversions, sonic's retyped planner and
+bfm_zero's latent table. Every checkpoint can now be obtained automatically,
+though mturan33's needs a HuggingFace token whose account has accepted its
+gate; wcompton's, the one exception until its upstream came back, is fetched
+again.
 
 Some rows are ONNX conversions, written by ./export_onnx.py from the TorchScript
 checkpoints above them so that a policy can run on TensorRT. A conversion is a
@@ -25,7 +27,10 @@ weight in another container grants no right that did not already exist. So each
 conversion ships only where its source's terms allow it to: amo's and rl_gym's
 are committed because their checkpoints are redistributable, while robomimic's,
 g1_gym's and stepdown's are generated on your machine because those checkpoints
-declare no licence at all. bfm_zero's latents.csv is the same reasoning in a
+declare no licence at all. mturan33's is written on your machine too, for a
+different reason: its source is MIT and could be redistributed, but the gate on
+the upstream repository is the author's to open, and shipping a conversion of a
+gated file would route around a decision that is theirs to make. bfm_zero's latents.csv is the same reasoning in a
 different container -- twelve vectors lifted out of a CC BY-NC pickle are still
 CC BY-NC -- so it too is written on your machine rather than committed.
 The amo and rl_gym checkpoints themselves are fetched rather than committed --
@@ -74,6 +79,38 @@ refuses a download that does not match it.
   homie  policies/homie/model.onnx  afe6  CC BY-NC, NON-COMMERCIAL  ./download_weights.sh
     InternRobotics/OpenHomie, HomieDeploy/deploy.onnx
     https://github.com/InternRobotics/OpenHomie
+
+  huru  policies/huru/model.onnx  9955  Apache-2.0  ./download_weights.sh
+    fishy233/huru-models, g1_walk_mjlab.onnx
+    https://huggingface.co/fishy233/huru-models
+    the deployment runtime the artifact was built for
+    https://github.com/aur3l14no/huru
+    the checkpoint carries its own contract in the ONNX metadata_props --
+    joint_names, joint_stiffness, joint_damping, default_joint_pos,
+    action_scale and observation_names -- so policies/huru/policy.cpp is a
+    transcription of the file rather than a reading of any deploy script
+
+  josabb  policies/josabb/model.onnx  0810  Apache-2.0  ./download_weights.sh
+    josabb/G1-humanoid-6dof-hands-locomotion-rl, onnx/policy.onnx
+    https://huggingface.co/josabb/G1-humanoid-6dof-hands-locomotion-rl
+    a G1 wearing two 6-DoF Inspire hands, trained in MJLab with RSL-RL. Same
+    exporter as huru, so the contract is in the ONNX metadata_props; the 53
+    observed joints are our 29 plus two 12-slot hands, and the 41-wide action
+    head opens with the fifteen the harness owns, in the harness's own order
+
+  mturan33  policies/mturan33/model.pt  4497  MIT  ./download_weights.sh
+  mturan33  policies/mturan33/model.onnx  ebbf  MIT  ./export_onnx.py, from model.pt
+    mturan33/g1-dual-critic-locomanip, unified_critic_s6u.pt
+    https://huggingface.co/mturan33/g1-dual-critic-locomanip
+    the repository is HuggingFace "gated: auto"; a token whose account has
+    accepted the gate is needed to fetch it, and ./download_weights.sh says so
+    training and evaluation code, which documents the 57-dim locomotion
+    observation and the 12-joint leg head slot for slot
+    https://github.com/mturan33/isaac-g1-ulc
+    model.onnx is the checkpoint's `loco_actor` alone, rebuilt from the
+    published LocoActor(57, 12) definition and checked against it; the arm
+    actor is left behind, its five right-arm joints being ones the harness
+    drives itself
 
   openwbt  policies/openwbt/model.onnx  e677  Apache-2.0  committed
     GalaxyGeneralRobotics/OpenWBT, ckpts/loco.onnx
@@ -213,12 +250,36 @@ refuses a download that does not match it.
     wty-yy/unitree_cpp_deploy
     https://github.com/wty-yy/unitree_cpp_deploy
 
+  sunny  policies/sunny/model_raw.onnx  6cc6  NONE DECLARED  ./download_weights.sh
+  sunny  policies/sunny/scan_mean.npy  0ab3  NONE DECLARED  ./download_weights.sh
+  sunny  policies/sunny/model.onnx  5754  NONE DECLARED  ./export_onnx.py, from model_raw.onnx
+    jasonsfmeitian/g1-sunny-locomotion, baseline/g1_deploy_walk_policy.onnx and
+    baseline/g1_deploy_scan_mean.npy
+    https://huggingface.co/jasonsfmeitian/g1-sunny-locomotion
+    the repository carries no model card and no licence, so nothing of it is
+    committed here and the conversion is written on your machine
+    model.onnx is model_raw.onnx with the height-scan branch folded away. The
+    shipped scan constant equals the graph's own normaliser mean for those 143
+    slots, so normalised it is all zeros and the scan CNN emits one constant
+    32-vector; folding it into the first layer's bias leaves a 99 -> 29 MLP
+    that ./export_onnx.py checks against the original graph. No weight is
+    retrained, and on flat ground it is the same function
+    default_joint_pos, action_scale and the PD gains are in a training script
+    the author never published. They were recovered by search against the
+    physics; README records what pinned each one
+
   zealot  policies/zealot/model.onnx  fd17  Apache-2.0  committed
     haixuantao/zealot-g1-locomotion, the velocity-v28 run
     https://huggingface.co/haixuantao/zealot-g1-locomotion
     trained in haixuanTao/zealot, the author's own training repository, which
     the model card names but which ships no checkpoint
     https://github.com/haixuanTao/zealot
+
+  zealot_v26  policies/zealot/model_v26.onnx  1e21  Apache-2.0  ./download_weights.sh
+    haixuantao/zealot-g1-locomotion, g1_v26_iter42290.onnx
+    the same repository one observation generation back: 48 slots against the
+    v28 checkpoint's 53, and the card documents all 48. The card also calls it
+    "best of the campaign" and never mentions v28 at all
 
 Four flags worth reading twice:
 

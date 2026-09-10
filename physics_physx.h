@@ -93,6 +93,7 @@ struct World {
   float* d_force = nullptr;
   float* d_root_pose = nullptr;
   float* d_root_angvel = nullptr;
+  float* d_root_linvel = nullptr;
   float* d_park = nullptr;
   float* d_zero3 = nullptr;
   float* d_link_pose = nullptr;
@@ -105,6 +106,7 @@ struct World {
   float* d_imu_quat = nullptr;
   float* d_gravity = nullptr;
   float* d_gyro = nullptr;
+  float* d_lin_vel = nullptr;
 
   float* d_q_target = nullptr;
   float* d_dq_target = nullptr;

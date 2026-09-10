@@ -108,6 +108,131 @@ class G1Gym(nn.Module):
         return self.actor(out.squeeze(0)), hn, cn
 
 
+class Mturan33Loco(nn.Module):
+    def __init__(
+        self,
+    ):
+        super().__init__()
+        layers = []
+        prev = 57
+        for h in (512, 256, 128):
+            layers += [nn.Linear(prev, h), nn.LayerNorm(h), nn.ELU()]
+            prev = h
+        layers.append(nn.Linear(prev, 12))
+        self.actor = nn.Sequential(*layers)
+
+    def forward(
+        self,
+        x,
+    ):
+        return self.actor(x)
+
+
+class SunnyFolded(nn.Module):
+    def __init__(
+        self,
+        mean,
+        std,
+        w0,
+        b0,
+        rest,
+    ):
+        super().__init__()
+        self.register_buffer("mean", mean)
+        self.register_buffer("std", std)
+        layers = [nn.Linear(99, 512), nn.ELU()]
+        layers[0].weight = nn.Parameter(w0)
+        layers[0].bias = nn.Parameter(b0)
+        for w, b in rest:
+            layers.append(nn.Linear(w.shape[1], w.shape[0]))
+            layers[-1].weight = nn.Parameter(w)
+            layers[-1].bias = nn.Parameter(b)
+            layers.append(nn.ELU())
+        self.net = nn.Sequential(*layers[:-1])
+
+    def forward(
+        self,
+        x,
+    ):
+        return self.net(torch.clamp((x - self.mean) / self.std, -100.0, 100.0))
+
+
+def export_sunny(
+    src,
+    scan_path,
+    dst,
+):
+    model = onnx.load(src)
+    init = {
+        i.name: torch.from_numpy(onnx.numpy_helper.to_array(i).copy())
+        for i in model.graph.initializer
+    }
+    mean, std = init["obs_mean"], init["onnx::Div_71"]
+
+    scan = torch.from_numpy(np.load(scan_path).astype(np.float32))
+    norm = torch.clamp((scan - mean[99:]) / std[99:], -100.0, 100.0)
+    if float(norm.abs().max()) > TOL:
+        raise RuntimeError(
+            "export_onnx: sunny's shipped scan is not the graph's own mean, "
+            "so the scan branch is not constant and cannot be folded"
+        )
+
+    cnn = nn.Sequential(
+        nn.Conv2d(1, 16, 3, padding=1),
+        nn.ELU(),
+        nn.Conv2d(16, 32, 3, padding=1),
+        nn.ELU(),
+        nn.Flatten(),
+        nn.Linear(4576, 64),
+        nn.ELU(),
+        nn.Linear(64, 32),
+        nn.ELU(),
+    )
+    cnn[0].weight = nn.Parameter(init["scan_cnn.0.weight"])
+    cnn[0].bias = nn.Parameter(init["scan_cnn.0.bias"])
+    cnn[2].weight = nn.Parameter(init["scan_cnn.2.weight"])
+    cnn[2].bias = nn.Parameter(init["scan_cnn.2.bias"])
+    cnn[5].weight = nn.Parameter(init["scan_cnn.5.weight"])
+    cnn[5].bias = nn.Parameter(init["scan_cnn.5.bias"])
+    cnn[7].weight = nn.Parameter(init["scan_cnn.7.weight"])
+    cnn[7].bias = nn.Parameter(init["scan_cnn.7.bias"])
+    cnn.eval()
+    with torch.no_grad():
+        feat = cnn(norm.view(1, 1, 13, 11))[0]
+
+    w0 = init["policy_net.0.weight"]
+    net = SunnyFolded(
+        mean[:99],
+        std[:99],
+        w0[:, :99].clone(),
+        init["policy_net.0.bias"] + w0[:, 99:] @ feat,
+        [
+            (init["policy_net.2.weight"], init["policy_net.2.bias"]),
+            (init["policy_net.4.weight"], init["policy_net.4.bias"]),
+            (init["action_net.weight"], init["action_net.bias"]),
+        ],
+    )
+    net.eval()
+
+    example = (torch.randn(4, 99),)
+    with torch.no_grad():
+        ref = net(*example)
+
+    torch.onnx.export(
+        net,
+        example,
+        dst,
+        input_names=["obs"],
+        output_names=["action"],
+        dynamic_axes={"obs": {0: "batch"}, "action": {0: "batch"}},
+        opset_version=OPSET,
+        dynamo=False,
+    )
+
+    full = torch.cat([example[0], scan.expand(example[0].shape[0], -1)], dim=1)
+    agree(dst, onnx_run(src, ["obs"], (full,)), onnx_run(dst, ["obs"], example))
+
+
 def require_cuda():
     if not torch.cuda.is_available():
         raise RuntimeError(
@@ -166,6 +291,40 @@ def export_stateless(
     agree(
         dst, [r.detach().cpu().numpy() for r in ref], onnx_run(dst, in_names, example)
     )
+
+
+def export_submodule(
+    src,
+    dst,
+    net,
+    prefix,
+    obs_dim,
+):
+    state = torch.load(src, map_location="cpu", weights_only=False)["model"]
+    wanted = set(net.state_dict())
+    weights = {
+        k[len(prefix) :]: v
+        for k, v in state.items()
+        if k.startswith(prefix) and k[len(prefix) :] in wanted
+    }
+    net.load_state_dict(weights)
+    net.eval()
+
+    example = (torch.randn(1, obs_dim),)
+    with torch.no_grad():
+        ref = net(*example)
+
+    torch.onnx.export(
+        net,
+        example,
+        dst,
+        input_names=["obs"],
+        output_names=["action"],
+        dynamic_axes={"obs": {0: "batch"}, "action": {0: "batch"}},
+        opset_version=OPSET,
+        dynamo=False,
+    )
+    agree(dst, [ref.numpy()], onnx_run(dst, ["obs"], example))
 
 
 def export_recurrent(
@@ -465,6 +624,20 @@ def main():
         set(),
         {},
         carries_state=False,
+    )
+
+    export_sunny(
+        "policies/sunny/model_raw.onnx",
+        "policies/sunny/scan_mean.npy",
+        "policies/sunny/model.onnx",
+    )
+
+    export_submodule(
+        "policies/mturan33/model.pt",
+        "policies/mturan33/model.onnx",
+        Mturan33Loco(),
+        "loco_actor.",
+        57,
     )
 
     export_latents(

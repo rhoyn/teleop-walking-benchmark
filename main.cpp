@@ -103,6 +103,7 @@ struct Ctx {
   const float* motor_q;
   const float* motor_dq;
   const float* gyro;
+  const float* base_lin_vel;
   const float* gravity;
   const float* cmd;
   const float* task;
@@ -669,8 +670,11 @@ void engine_run(
 #include "policies/handoff/policy.cpp"
 #include "policies/holosoma/policy.cpp"
 #include "policies/homie/policy.cpp"
+#include "policies/huru/policy.cpp"
+#include "policies/josabb/policy.cpp"
 #include "policies/legged_rl_lab/policy.cpp"
 #include "policies/mimic_lite/policy.cpp"
+#include "policies/mturan33/policy.cpp"
 #include "policies/nanog1/policy.cpp"
 #include "policies/openwbt/policy.cpp"
 #include "policies/rl_gym/policy.cpp"
@@ -681,6 +685,7 @@ void engine_run(
 #include "policies/schoi/policy.cpp"
 #include "policies/sonic/policy.cpp"
 #include "policies/stepdown/policy.cpp"
+#include "policies/sunny/policy.cpp"
 #include "policies/wbc_agile/policy.cpp"
 #include "policies/wcompton/policy.cpp"
 #include "policies/wty_cpp/policy.cpp"
@@ -703,8 +708,11 @@ const char* const NAMES[] = {
     "handoff_with_arms",
     "holosoma",
     "homie",
+    "huru",
+    "josabb",
     "legged_rl_lab",
     "mimic_lite",
+    "mturan33",
     "nanog1",
     "openwbt",
     "rl_gym",
@@ -715,10 +723,12 @@ const char* const NAMES[] = {
     "schoi",
     "sonic",
     "stepdown",
+    "sunny",
     "wbc_agile",
     "wcompton",
     "wty_cpp",
     "zealot",
+    "zealot_v26",
 };
 
 }
@@ -751,8 +761,11 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
     return std::make_unique<handoff::WithArmsPolicy>();
   if (name == "holosoma") return std::make_unique<holosoma::Policy>();
   if (name == "homie") return std::make_unique<homie::Policy>();
+  if (name == "huru") return std::make_unique<huru::Policy>();
+  if (name == "josabb") return std::make_unique<josabb::Policy>();
   if (name == "legged_rl_lab") return std::make_unique<legged_rl_lab::Policy>();
   if (name == "mimic_lite") return std::make_unique<mimic_lite::Policy>();
+  if (name == "mturan33") return std::make_unique<mturan33::Policy>();
   if (name == "nanog1") return std::make_unique<nanog1::Policy>();
   if (name == "openwbt") return std::make_unique<openwbt::Policy>();
   if (name == "rl_gym") return std::make_unique<rl_gym::Policy>();
@@ -763,10 +776,12 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
   if (name == "schoi") return std::make_unique<schoi::Policy>();
   if (name == "sonic") return std::make_unique<sonic::Policy>();
   if (name == "stepdown") return std::make_unique<stepdown::Policy>();
+  if (name == "sunny") return std::make_unique<sunny::Policy>();
   if (name == "wbc_agile") return std::make_unique<wbc_agile::Policy>();
   if (name == "wcompton") return std::make_unique<wcompton::Policy>();
   if (name == "wty_cpp") return std::make_unique<wty_cpp::Policy>();
   if (name == "zealot") return std::make_unique<zealot::Policy>();
+  if (name == "zealot_v26") return std::make_unique<zealot::V26Policy>();
 
   std::string msg = "unknown policy '" + name + "'. Ported: ";
   for (size_t i = 0; i < std::size(NAMES); ++i) {
@@ -2000,6 +2015,7 @@ int run(
             phys->motor_q(),
             phys->motor_dq(),
             phys->gyro(),
+            phys->base_lin_vel(),
             phys->gravity(),
             d_cmd,
             d_task,

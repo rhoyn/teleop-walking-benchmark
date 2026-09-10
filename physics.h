@@ -38,6 +38,7 @@ class Physics {
   virtual const float* motor_q() const = 0;
   virtual const float* motor_dq() const = 0;
   virtual const float* gyro() const = 0;
+  virtual const float* base_lin_vel() const = 0;
   virtual const float* gravity() const = 0;
   virtual const float* base_quat() const = 0;
   virtual float* q_target() = 0;

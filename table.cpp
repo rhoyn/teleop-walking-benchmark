@@ -32,6 +32,15 @@ inline bool is_unranked(const std::string& name) {
   return false;
 }
 
+constexpr const char* SIM_VELOCITY[] = {"huru", "josabb", "mturan33", "sunny"};
+
+inline bool needs_sim_velocity(const std::string& name) {
+  for (const char* v : SIM_VELOCITY) {
+    if (name == v) return true;
+  }
+  return false;
+}
+
 struct Totals {
   long runs = 0;
   long completed = 0;
@@ -315,6 +324,12 @@ std::string both(const Totals& t) {
   return rate(t.done_mj, t.runs_mj) + "/" + rate(t.done_px, t.runs_px) + " %";
 }
 
+std::string runs_cell(const Totals& t) {
+  if (t.runs_mj == 0 && t.runs_px == 0) return "-";
+  if (t.runs_mj == t.runs_px) return std::to_string(t.runs_mj);
+  return std::to_string(t.runs_mj) + "/" + std::to_string(t.runs_px);
+}
+
 std::string row(
     const std::string& name,
     const Totals& t
@@ -322,6 +337,7 @@ std::string row(
   const double weight = static_cast<double>(t.scored);
   const std::vector<std::string> cells = {
       both(t),
+      runs_cell(t),
       t.scored > 0
           ? fixed(t.pos / weight, 0) + " cm / " + fixed(t.yaw / weight, 0) + "°"
           : "-",
@@ -331,7 +347,9 @@ std::string row(
 
   const bool unranked = is_unranked(name);
   std::ostringstream out;
-  out << "| " << (unranked ? "~~`" + name + "`~~\\*\\*" : "`" + name + "`");
+  const std::string mark = needs_sim_velocity(name) ? "\\*" : "";
+  out << "| "
+      << (unranked ? "~~`" + name + "`~~\\*\\*" : "`" + name + "`" + mark);
   for (size_t i = 0; i < cells.size(); ++i) {
     std::string text = i < 1 ? "**" + cells[i] + "**" : cells[i];
     if (unranked && cells[i] != "-") text = "~~" + text + "~~";
@@ -358,10 +376,11 @@ int main(
     for (int i = 1; i < argc; ++i) table::accumulate(argv[i], totals);
     if (totals.empty()) throw std::runtime_error("table: no runs to pool");
 
-    std::cout << "| `--policy` | completed<br>mujoco/physx | err<br>pos/yaw "
-                 "| walk<br>battery<br>energy<br>consumed "
-                 "| walk<br>vibrations |\n"
-              << "|---:|---:|---:|---:|---:|\n";
+    std::cout
+        << "| `--policy` | completed<br>mujoco/physx | runs | err<br>pos/yaw "
+           "| walk<br>battery<br>energy<br>consumed "
+           "| walk<br>vibrations |\n"
+        << "|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }

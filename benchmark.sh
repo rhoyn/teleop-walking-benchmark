@@ -2,21 +2,21 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-RUNS=${RUNS:-2048}
-ROUNDS=${ROUNDS:-4}
-SONIC_DIV=${SONIC_DIV:-8}
-NGPUS=$(nvidia-smi --list-gpus 2>/dev/null | wc -l)
+RUNS=${RUNS:-512}
+ROUNDS=${ROUNDS:-10}
+SONIC_DIV=${SONIC_DIV:-16}
+NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "  MIG ")
+[ "$NGPUS" -ge 1 ] || NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "^GPU ")
 [ "$NGPUS" -ge 1 ] || NGPUS=1
 JOBS=${JOBS:-$((4 * NGPUS))}
 NICE=${NICE:-10}
-DELAY=${DELAY:-60}
 CPUS=1-$(($(nproc) - 1))
 NCORES=$(($(nproc) - 1))
 CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
 echo 0 >"$CORESEQ"
 GPUDIR=$(mktemp -d -t benchmark-gpu.XXXXXX)
 GPUSLOTS=$(((JOBS + NGPUS - 1) / NGPUS))
-export RUNS SONIC_DIV CPUS NICE DELAY NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
+export RUNS SONIC_DIV CPUS NICE NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
   grep -vE '^(decoupled_wbc|gr00t_wbc)$')
@@ -25,8 +25,28 @@ for h in h074_p000 h070_p000 h066_p000 h066_p012; do
   POLICIES="$POLICIES gr00t_wbc_$h decoupled_wbc_$h"
 done
 
+GOOD='
+gr00t_wbc_h066_p012
+gr00t_wbc_h066_p000
+gr00t_wbc_h070_p000
+gr00t_wbc_h074_p000
+decoupled_wbc_h066_p000
+decoupled_wbc_h066_p012
+decoupled_wbc_h070_p000
+decoupled_wbc_h074_p000
+homie
+grove
+amo
+sonic
+wbc_agile
+mimic_lite
+robomimic
+run_residual
+asap
+handoff_with_arms
+'
+
 RUN='
-  sleep $((RANDOM % (DELAY + 1)))
   ROUND=$0
   P=$1
   ENGINE=$2
@@ -95,6 +115,9 @@ trap 'kill $MON 2>/dev/null || true; rm -rf "$CORESEQ" "$CORESEQ.lock" "$GPUDIR"
 
 for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
+    n=1
+    echo "$GOOD" | grep -qxF "$p" && n=$ROUNDS
+    [ "$r" -lt "$n" ] || continue
     for e in mujoco physx; do echo "$r $p $e"; done
-  done | xargs -P "$JOBS" -n 3 bash -c "$RUN"
-done
+  done
+done | xargs -P "$JOBS" -n 3 bash -c "$RUN"

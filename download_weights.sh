@@ -15,6 +15,22 @@ WEIGHTS=(
   "afe6363c83c8b9ab8b1a2fed598fce7de35ff045eee1a95b336fd6720e3d3d49"
   "https://raw.githubusercontent.com/InternRobotics/OpenHomie/cefcd85fcf81f529e8be065795fb2a7273e69435/HomieDeploy/deploy.onnx"
 
+  "policies/huru/model.onnx"
+  "9955ef11795b34e640518e6b81f427e7415a90069be39c8d27363433dd463173"
+  "https://huggingface.co/fishy233/huru-models/resolve/bc4a0aeadd51a8c99e3aa701e6535004b67cdcd2/g1_walk_mjlab.onnx"
+
+  "policies/josabb/model.onnx"
+  "08106fd7515900f4822939acbece2fef3393608428c1aeb010c2e0b4ebc6b8ea"
+  "https://huggingface.co/josabb/G1-humanoid-6dof-hands-locomotion-rl/resolve/83e06e1277b30f9a694678b711c8c753c03107a6/onnx/policy.onnx"
+
+  "policies/mturan33/model.pt"
+  "449728a9e5e48210012d74db2c6bd689b53e3c298646b7b2e3b1f2b27490b2c5"
+  "https://huggingface.co/mturan33/g1-dual-critic-locomanip/resolve/07a034a67155652f2fd6d906bf95d19314a83716/unified_critic_s6u.pt"
+
+  "policies/zealot/model_v26.onnx"
+  "1e21412a09f3af7fa2dbdec58de4d4600e2679862a1b24c502c0a02916bd440f"
+  "https://huggingface.co/haixuantao/zealot-g1-locomotion/resolve/774250dd362e3341d8fe3b69b44d2ff34b0d37ac/g1_v26_iter42290.onnx"
+
   "policies/rl_gym/model.pt"
   "cf668f75b90d1abf73d2b87612a6e76bccc61ff7e083b63582d3f6aaa3c1759d"
   "https://raw.githubusercontent.com/unitreerobotics/unitree_rl_gym/276801e46c5d433564f24658bac64f254b7d2d4b/deploy/pre_train/g1/motion.pt"
@@ -83,10 +99,23 @@ WEIGHTS=(
   "3c3ddea79f3010640493bd65c39c7bdf8784131d923f1f1401c7957ba1adade6"
   "https://huggingface.co/arushbisht12/unitree-g1-stepdown-safety/resolve/fd97d9ac2eccda849e6f7440a4c400a6cd3697ae/safety_motion.pt"
 
+  "policies/sunny/model_raw.onnx"
+  "6cc6c71dc1d900bc240ade207cc7987b786d90503b9c899edc12ab44fcc56d62"
+  "https://huggingface.co/jasonsfmeitian/g1-sunny-locomotion/resolve/3a8b206d42a9e3ce015513cb2fffe2498cb2e92c/baseline/g1_deploy_walk_policy.onnx"
+
+  "policies/sunny/scan_mean.npy"
+  "0ab35d51d848dea3c7d36557a611c85ed03e0ed87bedc9618560d68d4ccdd686"
+  "https://huggingface.co/jasonsfmeitian/g1-sunny-locomotion/resolve/3a8b206d42a9e3ce015513cb2fffe2498cb2e92c/baseline/g1_deploy_scan_mean.npy"
+
   "policies/wcompton/model.onnx"
   "134ae9450c41e4b282766825ea0295bda2cd7eda83f59781053194b87bad15e1"
   "https://huggingface.co/wcompton/legged_locomotion_rl/resolve/844b125833faa820214546f16bc2e770db1471de/g1_blind_flat_end2end/2026-07-03_00-27-14_flat_loco/policy.onnx"
 )
+
+auth=()
+if [ -n "${HF_TOKEN:-}" ]; then
+  auth=(-H "Authorization: Bearer $HF_TOKEN")
+fi
 
 for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
   dest="${WEIGHTS[i]}"
@@ -94,7 +123,20 @@ for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
   url="${WEIGHTS[i + 2]}"
 
   echo "fetch $dest"
-  curl -fL -o "$dest" "$url"
+  mkdir -p "$(dirname "$dest")"
+  code=$(curl -sL -o "$dest" -w '%{http_code}' "${auth[@]}" "$url")
+  if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+    echo "$dest: HTTP $code -- this repository is gated." >&2
+    echo "  Set HF_TOKEN to a token whose account has accepted the gate:" >&2
+    echo "  curl -X POST -H \"Authorization: Bearer \$HF_TOKEN\" \\" >&2
+    echo "       -H 'Content-Type: application/json' -d '{}' \\" >&2
+    echo "       ${url%/resolve/*}/ask-access" >&2
+    exit 1
+  fi
+  if [ "$code" != "200" ]; then
+    echo "$dest: HTTP $code" >&2
+    exit 1
+  fi
 
   got=$(sha256sum <"$dest" | cut -d' ' -f1)
   if [ "$got" != "$want" ]; then

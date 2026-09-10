@@ -616,12 +616,14 @@ __global__ void k_read_sensors(
     const float* __restrict__ dq,
     const float* __restrict__ root_pose,
     const float* __restrict__ root_angvel,
+    const float* __restrict__ root_linvel,
     const int* __restrict__ dof_of_motor,
     float* __restrict__ motor_q,
     float* __restrict__ motor_dq,
     float* __restrict__ imu_quat,
     float* __restrict__ gravity_body,
     float* __restrict__ gyro_body,
+    float* __restrict__ lin_vel_body,
     int envs,
     int max_dofs
 ) {
@@ -645,6 +647,9 @@ __global__ void k_read_sensors(
 
   const float* wv = root_angvel + env * 3;
   quat_conj_rot(rp, wv[0], wv[1], wv[2], gyro_body + env * 3);
+
+  const float* lv = root_linvel + env * 3;
+  quat_conj_rot(rp, lv[0], lv[1], lv[2], lin_vel_body + env * 3);
 }
 
 __global__ void k_check_falls(
@@ -846,6 +851,7 @@ World::~World() {
                   (void*)d_alpha_prev,   (void*)d_force,
                   (void*)d_root_pose,    (void*)d_park,
                   (void*)d_zero3,        (void*)d_root_angvel,
+                  (void*)d_root_linvel,  (void*)d_lin_vel,
                   (void*)d_link_pose,    (void*)d_link_vel,
                   (void*)d_link_force,   (void*)d_dof_target,
                   (void*)d_motor_q,      (void*)d_motor_dq,
@@ -918,6 +924,7 @@ World* world_make(
   w->d_park = device_zeros<float>(7);
   w->d_zero3 = device_zeros<float>(3);
   w->d_root_angvel = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
+  w->d_root_linvel = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
   w->d_link_pose = device_zeros<float>(links * 7);
   w->d_link_vel = device_zeros<float>(links * 3);
   w->d_link_force = device_zeros<float>(links * 3);
@@ -928,6 +935,7 @@ World* world_make(
   w->d_imu_quat = device_zeros<float>(static_cast<size_t>(w->envs) * 4);
   w->d_gravity = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
   w->d_gyro = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
+  w->d_lin_vel = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
 
   w->d_q_target = device_zeros<float>(motors);
   w->d_dq_target = device_zeros<float>(motors);
@@ -995,6 +1003,12 @@ void world_read(World& w) {
   );
   read_into(
       w,
+      w.d_root_linvel,
+      PxArticulationGPUAPIReadType::eROOT_LINEAR_VELOCITY,
+      "root linear velocity"
+  );
+  read_into(
+      w,
       w.d_link_pose,
       PxArticulationGPUAPIReadType::eLINK_GLOBAL_POSE,
       "link pose"
@@ -1012,12 +1026,14 @@ void world_read(World& w) {
       w.d_dq,
       w.d_root_pose,
       w.d_root_angvel,
+      w.d_root_linvel,
       w.d_dof_of_motor,
       w.d_motor_q,
       w.d_motor_dq,
       w.d_imu_quat,
       w.d_gravity,
       w.d_gyro,
+      w.d_lin_vel,
       w.envs,
       w.max_dofs
   );
@@ -1573,6 +1589,7 @@ class PhysxPhysics : public Physics {
   const float* motor_q() const override { return world_->d_motor_q; }
   const float* motor_dq() const override { return world_->d_motor_dq; }
   const float* gyro() const override { return world_->d_gyro; }
+  const float* base_lin_vel() const override { return world_->d_lin_vel; }
   const float* gravity() const override { return world_->d_gravity; }
   const float* base_quat() const override { return world_->d_imu_quat; }
   float* q_target() override { return world_->d_q_target; }

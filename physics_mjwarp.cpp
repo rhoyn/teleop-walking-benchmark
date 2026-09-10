@@ -198,6 +198,29 @@ __global__ void k_reset(
   }
 }
 
+__global__ void k_base_lin_vel(
+    const float* __restrict__ qvel,
+    const float* __restrict__ quat,
+    float* __restrict__ lin_vel,
+    int nworld,
+    int nv,
+    int base_v
+) {
+  const int w = blockIdx.x * blockDim.x + threadIdx.x;
+  if (w >= nworld) return;
+
+  const float* v = qvel + size_t(w) * nv + base_v;
+  const float* q = quat + size_t(w) * 4;
+  const float qw = q[0], x = -q[1], y = -q[2], z = -q[3];
+  const float tx = 2.0f * (y * v[2] - z * v[1]);
+  const float ty = 2.0f * (z * v[0] - x * v[2]);
+  const float tz = 2.0f * (x * v[1] - y * v[0]);
+  float* o = lin_vel + size_t(w) * 3;
+  o[0] = v[0] + qw * tx + (y * tz - z * ty);
+  o[1] = v[1] + qw * ty + (z * tx - x * tz);
+  o[2] = v[2] + qw * tz + (x * ty - y * tx);
+}
+
 __global__ void k_obs_joint(
     const float* qpos,
     const float* qvel,
@@ -336,6 +359,7 @@ class MjWarpPhysics : public Physics {
     zeros(&d_stance_, PHYS_NUM_MOTOR);
     zeros(&d_energy_, size_t(side_.nworld) * PHYS_GROUPS);
     zeros(&d_vibration_, size_t(side_.nworld) * PHYS_GROUPS);
+    zeros(&d_linvel_, size_t(side_.nworld) * 3);
     zeros(&d_dqprev_, size_t(side_.nworld) * PHYS_NUM_MOTOR);
     zeros(&d_alphaprev_, size_t(side_.nworld) * PHYS_NUM_MOTOR);
 
@@ -361,7 +385,8 @@ class MjWarpPhysics : public Physics {
           (void*)d_energy_,
           (void*)d_vibration_,
           (void*)d_dqprev_,
-          (void*)d_alphaprev_}) {
+          (void*)d_alphaprev_,
+          (void*)d_linvel_}) {
       if (p != nullptr) cudaFree(p);
     }
     if (graph_ != nullptr) warp_.destroy_graph(graph_);
@@ -487,6 +512,16 @@ class MjWarpPhysics : public Physics {
 
   void read() override {
     const size_t n = size_t(envs_);
+    const int blocks = (side_.nworld + 255) / 256;
+    k_base_lin_vel<<<blocks, 256>>>(
+        p_qvel_,
+        p_quat_,
+        d_linvel_,
+        side_.nworld,
+        side_.nv,
+        side_.base_v
+    );
+    ck(cudaGetLastError(), "base_lin_vel");
     down(host_pose_.data(), p_pose_, n * 7);
     down(host_foot_.data(), p_foot_, n * 2);
     down(host_speed_.data(), p_speed_, n * 2);
@@ -498,6 +533,7 @@ class MjWarpPhysics : public Physics {
   const float* motor_q() const override { return p_q_; }
   const float* motor_dq() const override { return p_dq_; }
   const float* gyro() const override { return p_gyro_; }
+  const float* base_lin_vel() const override { return d_linvel_; }
   const float* gravity() const override { return p_grav_; }
   const float* base_quat() const override { return p_quat_; }
   float* q_target() override { return p_qtarget_; }
@@ -638,6 +674,7 @@ class MjWarpPhysics : public Physics {
   float *d_qpos0_ = nullptr, *d_stance_ = nullptr;
   float *d_energy_ = nullptr, *d_vibration_ = nullptr;
   float *d_dqprev_ = nullptr, *d_alphaprev_ = nullptr;
+  float* d_linvel_ = nullptr;
 
   std::vector<float> host_pose_, host_foot_, host_speed_;
   std::vector<float> host_energy_, host_vibration_, host_pforce_;
