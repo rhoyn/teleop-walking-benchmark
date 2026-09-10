@@ -301,6 +301,7 @@ class MjWarpPhysics : public Physics {
     p_kd_ = param<float>("kd", PHYS_NUM_MOTOR);
     p_alive_ = param<int>("alive", size_t(side_.nworld));
     p_pjoint_ = param<int>("punch_joint", size_t(side_.nworld));
+    p_pframe_ = param<int>("punch_frame", size_t(side_.nworld));
     p_pforce_ = param<float>("punch_force", size_t(side_.nworld) * 3);
     p_q_ = param<float>("obs_q", size_t(side_.nworld) * PHYS_NUM_MOTOR);
     p_dq_ = param<float>("obs_dq", size_t(side_.nworld) * PHYS_NUM_MOTOR);
@@ -323,6 +324,7 @@ class MjWarpPhysics : public Physics {
     host_vibration_.assign(n * PHYS_GROUPS, 0.0f);
     alive_.assign(n, 1);
     host_pjoint_.assign(size_t(side_.nworld), -1);
+    host_pframe_.assign(size_t(side_.nworld), 0);
     host_pforce_.assign(size_t(side_.nworld) * 3, 0.0f);
     host_alive_.assign(size_t(side_.nworld), 1);
 
@@ -407,6 +409,8 @@ class MjWarpPhysics : public Physics {
     up(p_alive_, host_alive_.data(), host_alive_.size());
     std::fill(host_pjoint_.begin(), host_pjoint_.end(), -1);
     up(p_pjoint_, host_pjoint_.data(), host_pjoint_.size());
+    std::fill(host_pframe_.begin(), host_pframe_.end(), 0);
+    up(p_pframe_, host_pframe_.data(), host_pframe_.size());
     ck(cudaMemset(p_pforce_, 0, host_pforce_.size() * sizeof(float)), "punch");
     ck(cudaMemset(
            d_energy_,
@@ -507,11 +511,13 @@ class MjWarpPhysics : public Physics {
   void set_punches(const PhysicsPunch* punches) override {
     for (int e = 0; e < envs_; ++e) {
       host_pjoint_[size_t(e)] = punches[e].joint;
+      host_pframe_[size_t(e)] = punches[e].frame_child;
       for (int k = 0; k < 3; ++k) {
         host_pforce_[size_t(e) * 3 + size_t(k)] = punches[e].force[k];
       }
     }
     up(p_pjoint_, host_pjoint_.data(), size_t(envs_));
+    up(p_pframe_, host_pframe_.data(), size_t(envs_));
     up(p_pforce_, host_pforce_.data(), size_t(envs_) * 3);
   }
 
@@ -625,7 +631,7 @@ class MjWarpPhysics : public Physics {
   float *p_q_, *p_dq_, *p_gyro_, *p_grav_, *p_quat_;
   float *p_pose_, *p_foot_, *p_speed_;
   float *p_qpos_, *p_qvel_, *p_ctrl_, *p_warm_;
-  int *p_alive_, *p_pjoint_;
+  int *p_alive_, *p_pjoint_, *p_pframe_;
 
   int *d_qadr_ = nullptr, *d_dadr_ = nullptr, *d_act_ = nullptr,
       *d_group_ = nullptr;
@@ -636,7 +642,7 @@ class MjWarpPhysics : public Physics {
   std::vector<float> host_pose_, host_foot_, host_speed_;
   std::vector<float> host_energy_, host_vibration_, host_pforce_;
   std::vector<unsigned char> alive_;
-  std::vector<int> host_pjoint_, host_alive_;
+  std::vector<int> host_pjoint_, host_pframe_, host_alive_;
 };
 
 }  // namespace

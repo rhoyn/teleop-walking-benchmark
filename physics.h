@@ -12,6 +12,7 @@ enum class PhysicsEngine { kMujoco, kPhysx };
 
 struct PhysicsPunch {
   int joint = -1;
+  int frame_child = 0;
   float force[3] = {0.0f, 0.0f, 0.0f};
 };
 

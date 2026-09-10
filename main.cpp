@@ -778,12 +778,12 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
 
 namespace {
 
-constexpr double WALK_S = 60.0;
-constexpr int WAYPOINTS = 12;
+constexpr double WALK_S = 90.0;
+constexpr int WAYPOINTS = 18;
 constexpr double POINT_S = WALK_S / WAYPOINTS;
 constexpr double CENTRE_X_M = 0.3;
 constexpr double CENTRE_Y_M = 0.0;
-constexpr double RADIUS_M = 1.0;
+constexpr double RADIUS_M = 0.75;
 constexpr double INIT_DURATION_S = 3.0;
 constexpr double FALL_PELVIS_Z = 0.20;
 constexpr double PERIOD_S = 0.02;
@@ -807,7 +807,7 @@ const double STANCE[NUM_MOTOR] = {-0.312, 0.0, 0.0, 0.669, -0.363, 0.0,
                                   0.6,    0.0, 0.0, 0.0,   0.2,    -0.2,
                                   0.0,    0.6, 0.0, 0.0,   0.0};
 
-constexpr double FORCE_MAX_N = 600.0;
+constexpr double FORCE_MAX_N = 500.0;
 constexpr double FORCE_SCALE_MIN = 0.5;
 constexpr double RAMP_FLOOR = 1.0 / 3.0;
 constexpr double RAMP_S = 60.0;
@@ -842,6 +842,7 @@ struct Waypoint {
 struct Punch {
   double time = 0.0;
   int joint = 0;
+  bool frame_child = false;
   double dir[3] = {};
   double force_n = 0.0;
 };
@@ -921,6 +922,7 @@ std::vector<Punch> schedule_make(
     Punch p;
     p.time = t_first + period * double(i);
     p.joint = int(random_below(rng, uint32_t(NUM_MOTOR)));
+    p.frame_child = random_below(rng, 2) != 0;
     direction(rng, p.dir);
     const double climbed = std::min((p.time - t_first) / RAMP_S, 1.0);
     const double ceiling =
@@ -932,9 +934,10 @@ std::vector<Punch> schedule_make(
     for (const Punch& q : out) {
       std::fprintf(
           stderr,
-          "PUNCH t=%.4f joint=%d dir=%.5f,%.5f,%.5f f=%.3f\n",
+          "PUNCH t=%.4f joint=%d frame=%s dir=%.5f,%.5f,%.5f f=%.3f\n",
           q.time,
           q.joint,
+          q.frame_child ? "child" : "parent",
           q.dir[0],
           q.dir[1],
           q.dir[2],
@@ -1359,10 +1362,19 @@ void preview_punch_arrow(
 ) {
   if (v.scene.ngeom >= v.scene.maxgeom) return;
   if (p.joint < 0 || size_t(p.joint) >= v.jnt_id.size()) return;
-  const double* to = v.d->xanchor + 3 * v.jnt_id[size_t(p.joint)];
+  const int jid = v.jnt_id[size_t(p.joint)];
+  const double* to = v.d->xanchor + 3 * jid;
   const double scale = p.force_n / FORCE_MAX_N;
   const double length = PUNCH_ARROW_SCALE * (0.15 + 0.45 * scale);
-  double axis_z[3] = {p.dir[0], p.dir[1], p.dir[2]};
+  const int child = v.m->jnt_bodyid[jid];
+  const int parent = v.m->body_parentid[child];
+  const int frame = p.frame_child || parent < 0 ? child : parent;
+  const double* R = v.d->xmat + 9 * frame;
+  double axis_z[3] = {
+      R[0] * p.dir[0] + R[1] * p.dir[1] + R[2] * p.dir[2],
+      R[3] * p.dir[0] + R[4] * p.dir[1] + R[5] * p.dir[2],
+      R[6] * p.dir[0] + R[7] * p.dir[1] + R[8] * p.dir[2]
+  };
   const double axis_len = std::sqrt(
       axis_z[0] * axis_z[0] + axis_z[1] * axis_z[1] + axis_z[2] * axis_z[2]
   );
@@ -1879,6 +1891,7 @@ int run(
             if (elapsed < pu.time || elapsed >= pu.time + PUNCH_DURATION_S)
               continue;
             h_punch[size_t(e)].joint = pu.joint;
+            h_punch[size_t(e)].frame_child = pu.frame_child ? 1 : 0;
             for (int k = 0; k < 3; ++k) {
               h_punch[size_t(e)].force[k] = float(pu.dir[k] * pu.force_n);
             }

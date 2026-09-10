@@ -1466,6 +1466,14 @@ class PhysxPhysics : public Physics {
       }
     }
 
+    joint_parent_link_.assign(PHYS_NUM_MOTOR, 0);
+    for (int j = 0; j < PHYS_NUM_MOTOR; ++j) {
+      const int body = joint_body_[size_t(j)];
+      const int parent = model.bodies[size_t(body)].parent;
+      joint_parent_link_[size_t(j)] =
+          fleet_.link_of_body[size_t(parent >= 0 ? parent : body)];
+    }
+
     std::vector<float> zero(PHYS_NUM_MOTOR, 0.0f);
     world_ = world::world_make(
         fleet_,
@@ -1598,7 +1606,13 @@ class PhysxPhysics : public Physics {
       };
       double arm[3];
       px_quat_rot(L, local, arm);
-      const double f[3] = {p.force[0], p.force[1], p.force[2]};
+      const int frame_link =
+          p.frame_child != 0 ? link : joint_parent_link_[size_t(p.joint)];
+      const float* F =
+          host_link_.data() + size_t(e) * stride + size_t(frame_link) * 7;
+      const double local_f[3] = {p.force[0], p.force[1], p.force[2]};
+      double f[3];
+      px_quat_rot(F, local_f, f);
       for (int k = 0; k < 3; ++k) pf[k] = float(f[k]);
       pt[0] = float(arm[1] * f[2] - arm[2] * f[1]);
       pt[1] = float(arm[2] * f[0] - arm[0] * f[2]);
@@ -1665,6 +1679,7 @@ class PhysxPhysics : public Physics {
   world::World* world_ = nullptr;
   std::vector<float> lim_, damp_;
   std::vector<int> joint_body_;
+  std::vector<int> joint_parent_link_;
   std::vector<double> joint_anchor_;
   std::vector<float> host_pose_, host_foot_, host_link_;
   std::vector<float> host_speed_, host_link_vel_;

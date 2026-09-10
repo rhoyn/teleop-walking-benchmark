@@ -81,9 +81,11 @@ def k_punch_clear(xfrc: wp.array2d(dtype=wp.spatial_vectorf)):
 @wp.kernel
 def k_punch_apply(
     punch_joint: wp.array(dtype=wp.int32),
+    punch_frame: wp.array(dtype=wp.int32),
     punch_force: wp.array2d(dtype=wp.float32),
     alive: wp.array(dtype=wp.int32),
     jnt_body: wp.array(dtype=wp.int32),
+    jnt_frame: wp.array(dtype=wp.int32),
     jnt_anchor: wp.array(dtype=wp.vec3f),
     xquat: wp.array2d(dtype=wp.quatf),
     xpos: wp.array2d(dtype=wp.vec3f),
@@ -95,8 +97,12 @@ def k_punch_apply(
     if j < 0 or alive[w] == 0:
         return
     b = jnt_body[j]
+    fb = b
+    if punch_frame[w] == 0:
+        fb = jnt_frame[j]
     r = rot_vec_quat(jnt_anchor[j], xquat[w, b]) + xpos[w, b] - xipos[w, b]
-    f = wp.vec3f(punch_force[w, 0], punch_force[w, 1], punch_force[w, 2])
+    local = wp.vec3f(punch_force[w, 0], punch_force[w, 1], punch_force[w, 2])
+    f = rot_vec_quat(local, xquat[w, fb])
     t = wp.cross(r, f)
     xfrc[w, b] = wp.spatial_vectorf(f[0], f[1], f[2], t[0], t[1], t[2])
 
@@ -208,6 +214,7 @@ def main():
     dadr = np.array([mjm.jnt_dofadr[i] for i in jid], np.int32)
     act = np.array([need(mjm, A, j) for j in JOINTS], np.int32)
     jbody = np.array([mjm.jnt_bodyid[i] for i in jid], np.int32)
+    jframe = np.array([mjm.body_parentid[mjm.jnt_bodyid[i]] for i in jid], np.int32)
     janchor = np.array([mjm.jnt_pos[i] for i in jid], np.float32)
 
     lo = np.full(NM, -np.inf, np.float32)
@@ -232,6 +239,7 @@ def main():
         "kd": wp.zeros(NM, dtype=wp.float32),
         "alive": wp.ones(nworld, dtype=wp.int32),
         "punch_joint": wp.full(nworld, -1, dtype=wp.int32),
+        "punch_frame": wp.zeros(nworld, dtype=wp.int32),
         "punch_force": wp.zeros((nworld, 3), dtype=wp.float32),
         "obs_q": wp.zeros((nworld, NM), dtype=wp.float32),
         "obs_dq": wp.zeros((nworld, NM), dtype=wp.float32),
@@ -251,6 +259,7 @@ def main():
     c_dadr = wp.array(dadr, dtype=wp.int32)
     c_act = wp.array(act, dtype=wp.int32)
     c_jbody = wp.array(jbody, dtype=wp.int32)
+    c_jframe = wp.array(jframe, dtype=wp.int32)
     c_janchor = wp.array(janchor, dtype=wp.vec3f)
     c_lo = wp.array(lo, dtype=wp.float32)
     c_hi = wp.array(hi, dtype=wp.float32)
@@ -280,9 +289,11 @@ def main():
             dim=nworld,
             inputs=[
                 P["punch_joint"],
+                P["punch_frame"],
                 P["punch_force"],
                 P["alive"],
                 c_jbody,
+                c_jframe,
                 c_janchor,
                 d.xquat,
                 d.xpos,
