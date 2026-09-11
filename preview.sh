@@ -15,18 +15,20 @@ BIN=${BIN:-build/teleop-walking-benchmark}
 DELAY=${DELAY:-20}
 export RUNID NICE CPUS WORK BIN DELAY
 
-COLS=8 ROWS=8 TW=160 TH=90 OW=1280 OH=720 BG=0x3D9356
+COLS=10 ROWS=9 TW=128 TH=72 OW=1280 OH=720 BG=0x3D9356
 FONT=assets/JetBrainsMono.ttf
 ENGINES=${ENGINES:-"physx mujoco"}
 
-POLICIES=${POLICIES:-$(build/table results/*.csv |
+POLICIES=${POLICIES:-$(build/table results/*.csv | sed 's/`<br>`/_/' |
   sed -n 's/^| ~*`\([a-z0-9_]*\)`.*/\1/p')}
 TOTAL=$(($(echo $POLICIES | wc -w) * $(echo $ENGINES | wc -w)))
 export TOTAL
+[ "$TOTAL" -lt $((COLS * ROWS)) ] ||
+  { echo "$TOTAL clips + label do not fit ${COLS}x${ROWS} tiles" >&2; exit 1; }
 
 RUN='
-  sleep $((RANDOM % (DELAY + 1)))
   out=$WORK/$1/$0
+  sleep $((RANDOM % (DELAY + 1)))
   nice -n "$NICE" taskset -c "$CPUS" "$BIN" --engine "$1" --policy "$0" \
     --runid "$RUNID" --record "$WORK/$1" --csv "$out.csv" \
     >"$out.log" 2>&1 &&
@@ -43,21 +45,24 @@ for p in $POLICIES; do
   for e in $ENGINES; do echo "$p $e"; done
 done | xargs -P "$JOBS" -n 2 bash -c "$RUN"
 
-clips=() layout= n=0
+clips=() layout= scale= stack= n=0
 for p in $POLICIES; do
   for e in $ENGINES; do
     clips+=(-i "$WORK/$e/$p.mp4")
     layout+="${layout:+|}$((n % COLS * TW))_$((n / COLS * TH))"
+    scale+="[$n:v]scale=$TW:$TH:flags=lanczos[v$n];"
+    stack+="[v$n]"
     n=$((n + 1))
   done
 done
 pad=$(((OH - ROWS * TH) / 2))
+[ "$n" -gt 1 ] && stack+="xstack=inputs=$n:layout=$layout:fill=$BG,"
 
-FILTER="pad=$OW:$OH:0:$pad:color=$BG,
-  drawtext=fontfile=$FONT:text='r h o y n':fontcolor=white:fontsize=13
-    :x=$((n % COLS * TW + 44)):y=$((n / COLS * TH + pad + 38)),
+FILTER="$scale$stack
+  pad=$OW:$OH:0:$pad:color=$BG,
+  drawtext=fontfile=$FONT:text='r h o y n':fontcolor=white:fontsize=10
+    :x=$((n % COLS * TW + 37)):y=$((n / COLS * TH + pad + 30)),
   format=yuv420p"
-[ "$n" -gt 1 ] && FILTER="xstack=inputs=$n:layout=$layout:fill=$BG,$FILTER"
 
 echo "combining $n clips"
 nice -n "$NICE" taskset -c "$CPUS" ffmpeg -hide_banner -loglevel error -stats -y \
