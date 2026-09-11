@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-JOBS=${JOBS:-16}
+JOBS=${JOBS:-8}
 RUNID=${RUNID:-0}
 NICE=${NICE:-10}
 CPUS=1-$(($(nproc) - 1))
