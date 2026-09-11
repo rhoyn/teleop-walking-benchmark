@@ -357,11 +357,13 @@ std::vector<char> plan_build(
     std::unique_ptr<nvinfer1::IHostMemory> blob(used->serialize());
     if (blob) {
       std::filesystem::create_directories("build/trt");
-      std::ofstream tf(timing_path, std::ios::binary);
-      tf.write(
-          static_cast<const char*>(blob->data()),
-          static_cast<std::streamsize>(blob->size())
-      );
+      const std::string partial = timing_path + "." + std::to_string(getpid());
+      std::ofstream(partial, std::ios::binary)
+          .write(
+              static_cast<const char*>(blob->data()),
+              static_cast<std::streamsize>(blob->size())
+          );
+      std::filesystem::rename(partial, timing_path);
     }
   }
   const char* p = static_cast<const char*>(plan->data());
@@ -568,8 +570,10 @@ std::shared_ptr<Engine> engine_make(
     );
     plan = plan_build(onnx_path, batch, inputs);
     std::filesystem::create_directories("build/trt");
-    std::ofstream out(cache, std::ios::binary);
-    out.write(plan.data(), static_cast<std::streamsize>(plan.size()));
+    const std::string partial = cache + "." + std::to_string(getpid());
+    std::ofstream(partial, std::ios::binary)
+        .write(plan.data(), static_cast<std::streamsize>(plan.size()));
+    std::filesystem::rename(partial, cache);
   }
 
   auto e = std::make_shared<Engine>();
