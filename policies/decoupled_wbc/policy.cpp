@@ -45,7 +45,7 @@ const float KPS[NUM_ACTIONS] =
     {150, 150, 100, 150, 40, 40, 150, 150, 100, 150, 40, 40, 200, 150, 150};
 const float KDS[NUM_ACTIONS] = {3, 3, 2, 4, 2, 2, 3, 3, 2, 4, 2, 2, 4, 4, 4};
 
-const policy_api::Limits LIMITS = {-0.55, 0.55, 0.55, 1.57, 0.0};
+const policy_api::Limits LIMITS = {-0.5, 0.5, 0.5, 1.0, 0.5};
 
 __global__ void k_decoupled_wbc_obs(
     const float* __restrict__ motor_q,
