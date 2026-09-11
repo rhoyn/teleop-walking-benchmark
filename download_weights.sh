@@ -124,7 +124,9 @@ for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
 
   echo "fetch $dest"
   mkdir -p "$(dirname "$dest")"
-  code=$(curl -sL -o "$dest" -w '%{http_code}' "${auth[@]}" "$url")
+  hdr=()
+  case "$dest" in policies/mturan33/*) hdr=("${auth[@]+"${auth[@]}"}") ;; esac
+  code=$(curl -sL -o "$dest" -w '%{http_code}' "${hdr[@]+"${hdr[@]}"}" "$url")
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
     echo "$dest: HTTP $code -- this repository is gated." >&2
     echo "  Set HF_TOKEN to a token whose account has accepted the gate:" >&2
