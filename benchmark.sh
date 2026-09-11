@@ -4,7 +4,7 @@ cd "$(dirname "$0")"
 
 RUNS=${RUNS:-512}
 ROUNDS=${ROUNDS:-10}
-SONIC_DIV=${SONIC_DIV:-16}
+SLOW_DIV=${SLOW_DIV:-8}
 NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "  MIG ")
 [ "$NGPUS" -ge 1 ] || NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "^GPU ")
 [ "$NGPUS" -ge 1 ] || NGPUS=1
@@ -16,7 +16,7 @@ CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
 echo 0 >"$CORESEQ"
 GPUDIR=$(mktemp -d -t benchmark-gpu.XXXXXX)
 GPUSLOTS=$(((JOBS + NGPUS - 1) / NGPUS))
-export RUNS SONIC_DIV CPUS NICE NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
+export CPUS NICE NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
   grep -vE '^(decoupled_wbc|gr00t_wbc)$')
@@ -39,14 +39,18 @@ grove
 amo
 '
 
+SLOW='
+sonic
+mimic_lite
+'
+
 RUN='
   TIER=$0
   ROUND=$1
-  P=$2
-  ENGINE=$3
+  n=$2
+  P=$3
+  ENGINE=$4
   R=$(printf "r%02d" "$ROUND")
-  n=$RUNS
-  [ "$P" = sonic ] && n=$((RUNS / SONIC_DIV))
   f=$((ROUND * n))
   out=$TIER.$R.$P.$ENGINE
   CORE=$(
@@ -110,9 +114,11 @@ trap 'kill $MON 2>/dev/null || true; rm -rf "$CORESEQ" "$CORESEQ.lock" "$GPUDIR"
 for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
     tier=tier_b
-    n=1
-    echo "$TIER_A" | grep -qxF "$p" && tier=tier_a && n=$ROUNDS
-    [ "$r" -lt "$n" ] || continue
-    for e in mujoco physx; do echo "$tier $r $p $e"; done
+    rounds=1
+    n=$RUNS
+    echo "$TIER_A" | grep -qxF "$p" && tier=tier_a && rounds=$ROUNDS
+    echo "$SLOW" | grep -qxF "$p" && rounds=$ROUNDS && n=$((RUNS / SLOW_DIV))
+    [ "$r" -lt "$rounds" ] || continue
+    for e in mujoco physx; do echo "$tier $r $n $p $e"; done
   done
-done | xargs -P "$JOBS" -n 4 bash -c "$RUN"
+done | xargs -P "$JOBS" -n 5 bash -c "$RUN"

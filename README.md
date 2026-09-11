@@ -43,12 +43,13 @@ fleet size — re-record when the model or `--runs` changes:
 
 ## Results
 
-139,328 runs — both engines, in rounds of 512 run ids. A run id names one
+140,800 runs — both engines, in rounds of 512 run ids. A run id names one
 whole task. A policy earns depth by tier: tier A, the eleven that complete at
 least 60 % averaged over the two engines, ran ten rounds, 5120 run ids; tier B
 ran one, since a policy that falls most of the time needs no fourth decimal
-place. `sonic` runs 32 a round. The `runs` column carries each policy's own
-count, so no row is read against a total it never had.
+place. `sonic` and `mimic_lite` are slow, so they run ten rounds of 64. The
+`runs` column carries each policy's own count, so no row is read against a
+total it never had.
 
 Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX through its
 GPU solver.
@@ -66,9 +67,9 @@ GPU solver.
 | `grove` | **63/74 %** | 5120 | 24 cm / 7° | 9421 J | 1703 |
 | `amo` | **65/71 %** | 5120 | 36 cm / 16° | 7574 J | 997 |
 | `homie` | **68/67 %** | 5120 | 21 cm / 40° | 7183 J | 1084 |
+| `sonic` | **57/28 %** | 640 | 37 cm / 10° | 10027 J | 1207 |
 | `wbc_agile` | **40/31 %** | 512 | 44 cm / 11° | 6144 J | 1034 |
-| `sonic` | **53/19 %** | 32 | 40 cm / 10° | 8946 J | 1117 |
-| `mimic_lite` | **23/26 %** | 512 | 80 cm / 13° | 11056 J | 1498 |
+| `mimic_lite` | **25/27 %** | 640 | 81 cm / 12° | 11072 J | 1504 |
 | `robomimic` | **17/17 %** | 512 | 173 cm / 15° | - | - |
 | `asap` | **13/18 %** | 512 | 126 cm / 34° | - | - |
 | `run_residual` | **13/16 %** | 512 | 533 cm / 15° | - | - |
