@@ -126,8 +126,10 @@ for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
   mkdir -p "$(dirname "$dest")"
   hdr=()
   case "$dest" in policies/mturan33/*) hdr=("${auth[@]+"${auth[@]}"}") ;; esac
-  code=$(curl -sL -o "$dest" -w '%{http_code}' "${hdr[@]+"${hdr[@]}"}" "$url")
+  code=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors \
+    -o "$dest" -w '%{http_code}' "${hdr[@]+"${hdr[@]}"}" "$url")
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
+    rm -f "$dest"
     echo "$dest: HTTP $code -- this repository is gated." >&2
     echo "  Set HF_TOKEN to a token whose account has accepted the gate:" >&2
     echo "  curl -X POST -H \"Authorization: Bearer \$HF_TOKEN\" \\" >&2
@@ -136,12 +138,14 @@ for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
     exit 1
   fi
   if [ "$code" != "200" ]; then
+    rm -f "$dest"
     echo "$dest: HTTP $code" >&2
     exit 1
   fi
 
   got=$(sha256sum <"$dest" | cut -d' ' -f1)
   if [ "$got" != "$want" ]; then
+    rm -f "$dest"
     echo "sha256 mismatch for $dest" >&2
     echo "  expected $want" >&2
     echo "  got      $got" >&2
