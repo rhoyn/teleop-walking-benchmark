@@ -125,7 +125,7 @@ for ((i = 0; i < ${#WEIGHTS[@]}; i += 3)); do
   echo "fetch $dest"
   mkdir -p "$(dirname "$dest")"
   hdr=()
-  case "$dest" in policies/mturan33/*) hdr=("${auth[@]+"${auth[@]}"}") ;; esac
+  case "$url" in https://huggingface.co/*) hdr=("${auth[@]+"${auth[@]}"}") ;; esac
   code=$(curl -sL --retry 5 --retry-delay 5 --retry-all-errors \
     -o "$dest" -w '%{http_code}' "${hdr[@]+"${hdr[@]}"}" "$url")
   if [ "$code" = "401" ] || [ "$code" = "403" ]; then
