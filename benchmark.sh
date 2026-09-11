@@ -25,7 +25,7 @@ for h in h074_p000 h070_p000 h066_p000 h066_p012; do
   POLICIES="$POLICIES gr00t_wbc_$h decoupled_wbc_$h"
 done
 
-GOOD='
+TIER_A='
 gr00t_wbc_h066_p012
 gr00t_wbc_h066_p000
 gr00t_wbc_h070_p000
@@ -37,24 +37,18 @@ decoupled_wbc_h074_p000
 homie
 grove
 amo
-sonic
-wbc_agile
-mimic_lite
-robomimic
-run_residual
-asap
-handoff_with_arms
 '
 
 RUN='
-  ROUND=$0
-  P=$1
-  ENGINE=$2
+  TIER=$0
+  ROUND=$1
+  P=$2
+  ENGINE=$3
   R=$(printf "r%02d" "$ROUND")
   n=$RUNS
   [ "$P" = sonic ] && n=$((RUNS / SONIC_DIV))
   f=$((ROUND * n))
-  out=$R.$P.$ENGINE
+  out=$TIER.$R.$P.$ENGINE
   CORE=$(
     exec 9>"$CORESEQ.lock"
     flock 9
@@ -115,9 +109,10 @@ trap 'kill $MON 2>/dev/null || true; rm -rf "$CORESEQ" "$CORESEQ.lock" "$GPUDIR"
 
 for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
+    tier=tier_b
     n=1
-    echo "$GOOD" | grep -qxF "$p" && n=$ROUNDS
+    echo "$TIER_A" | grep -qxF "$p" && tier=tier_a && n=$ROUNDS
     [ "$r" -lt "$n" ] || continue
-    for e in mujoco physx; do echo "$r $p $e"; done
+    for e in mujoco physx; do echo "$tier $r $p $e"; done
   done
-done | xargs -P "$JOBS" -n 3 bash -c "$RUN"
+done | xargs -P "$JOBS" -n 4 bash -c "$RUN"

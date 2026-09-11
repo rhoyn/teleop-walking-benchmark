@@ -31,8 +31,8 @@ MuJoCo through [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp).
 ./benchmark.sh          # whole field, both engines
 ```
 
-Batches write `results/r<NN>.<policy>.<engine>.csv`; `./build/table` renders
-the table, problems land in `benchmark.log`. Policies are TensorRT plans cached
+Batches write `results/<tier>.r<NN>.<policy>.<engine>.csv`; `./build/table`
+renders the table, problems land in `benchmark.log`. Policies are TensorRT plans cached
 in `build/trt/`; inference is under 3% of a run.
 
 MuJoCo Warp has no C API, so `make capture` records one substep as a CUDA graph
@@ -43,52 +43,56 @@ fleet size — re-record when the model or `--runs` changes:
 
 ## Results
 
-608,256 runs — four rounds of 2048 run ids, both engines, except that `sonic`
-runs 256 a round. A run id names one whole task.
+139,328 runs — both engines, in rounds of 512 run ids. A run id names one
+whole task. A policy earns depth by tier: tier A, the eleven that complete at
+least 60 % averaged over the two engines, ran ten rounds, 5120 run ids; tier B
+ran one, since a policy that falls most of the time needs no fourth decimal
+place. `sonic` runs 32 a round. The `runs` column carries each policy's own
+count, so no row is read against a total it never had.
 
 Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX through its
 GPU solver.
 
-| `--policy` | completed<br>mujoco/physx | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
-|---:|---:|---:|---:|---:|
-| `gr00t_wbc_h066_p012` | **87/78 %** | 36 cm / 8° | 5819 J | 721 |
-| `gr00t_wbc_h066_p000` | **87/77 %** | 40 cm / 8° | 5837 J | 727 |
-| `gr00t_wbc_h070_p000` | **83/80 %** | 19 cm / 5° | 5749 J | 735 |
-| `gr00t_wbc_h074_p000` | **76/75 %** | 16 cm / 5° | 6090 J | 786 |
-| `decoupled_wbc_h066_p000` | **78/72 %** | 18 cm / 6° | 7503 J | 1656 |
-| `decoupled_wbc_h066_p012` | **78/71 %** | 17 cm / 6° | 7547 J | 1657 |
-| `decoupled_wbc_h070_p000` | **75/69 %** | 15 cm / 6° | 7203 J | 1557 |
-| `decoupled_wbc_h074_p000` | **72/65 %** | 15 cm / 7° | 7203 J | 1532 |
-| `homie` | **68/67 %** | 21 cm / 40° | 7175 J | 1085 |
-| `grove` | **62/73 %** | 24 cm / 7° | 9426 J | 1707 |
-| `amo` | **65/72 %** | 36 cm / 16° | 7553 J | 996 |
-| `sonic` | **55/26 %** | 39 cm / 10° | 10160 J | 1219 |
-| `wbc_agile` | **41/34 %** | 39 cm / 10° | 5979 J | 1015 |
-| `mimic_lite` | **20/30 %** | 84 cm / 12° | 11044 J | 1489 |
-| `robomimic` | **18/17 %** | 183 cm / 16° | - | - |
-| `run_residual` | **14/17 %** | 530 cm / 15° | - | - |
-| `asap` | **13/16 %** | 123 cm / 34° | - | - |
-| `falcon` | **4/6 %** | 52 cm / 18° | - | - |
-| `openwbt` | **0/7 %** | 83 cm / 51° | - | - |
-| `rl_gym` | **0/5 %** | 102 cm / 24° | - | - |
-| `handoff` | **1/1 %** | 144 cm / 24° | - | - |
-| `rl_lab` | **1/1 %** | 72 cm / 72° | - | - |
-| `dm_agile` | **1/0 %** | 56 cm / 90° | - | - |
-| `wty_cpp` | **1/0 %** | 38 cm / 26° | - | - |
-| `bfm_zero` | **0/0 %** | 423 cm / 71° | - | - |
-| `holosoma` | **0/0 %** | 84 cm / 50° | - | - |
-| `zealot` | **0/0 %** | 311 cm / 87° | - | - |
-| `rl_mjlab` | **0/0 %** | 239 cm / 64° | - | - |
-| `dm_march` | **0/0 %** | 151 cm / 91° | - | - |
-| `legged_rl_lab` | **0/0 %** | 222 cm / 83° | - | - |
-| `schoi` | **0/0 %** | 173 cm / 88° | - | - |
-| `g1_gym` | **0/0 %** | 108 cm / 89° | - | - |
-| `nanog1` | **0/0 %** | 84 cm / 60° | - | - |
-| `wcompton` | **0/0 %** | 136 cm / 65° | - | - |
-| `clobot` | **0/0 %** | 131 cm / 78° | - | - |
-| `stepdown` | **0/0 %** | 97 cm / 61° | - | - |
-| ~~`handoff_with_arms`~~\*\* | ~~**48/50 %**~~ | ~~17 cm / 9°~~ | ~~6838 J~~ | ~~1227~~ |
-| ~~`clobot_with_arms`~~\*\* | ~~**9/6 %**~~ | ~~39 cm / 20°~~ | - | - |
+| `--policy` | completed<br>mujoco/physx | runs | err<br>pos/yaw | walk<br>battery<br>energy<br>consumed | walk<br>vibrations |
+|---:|---:|---:|---:|---:|---:|
+| `gr00t_wbc_h066_p000` | **87/78 %** | 5120 | 40 cm / 8° | 5846 J | 729 |
+| `gr00t_wbc_h066_p012` | **87/78 %** | 5120 | 36 cm / 8° | 5813 J | 721 |
+| `gr00t_wbc_h070_p000` | **83/81 %** | 5120 | 19 cm / 5° | 5755 J | 735 |
+| `gr00t_wbc_h074_p000` | **76/76 %** | 5120 | 15 cm / 5° | 6096 J | 787 |
+| `decoupled_wbc_h066_p000` | **77/72 %** | 5120 | 18 cm / 6° | 7480 J | 1656 |
+| `decoupled_wbc_h066_p012` | **78/71 %** | 5120 | 17 cm / 6° | 7557 J | 1658 |
+| `decoupled_wbc_h070_p000` | **75/69 %** | 5120 | 15 cm / 6° | 7183 J | 1555 |
+| `decoupled_wbc_h074_p000` | **72/67 %** | 5120 | 15 cm / 7° | 7209 J | 1534 |
+| `grove` | **63/74 %** | 5120 | 24 cm / 7° | 9421 J | 1703 |
+| `amo` | **65/71 %** | 5120 | 36 cm / 16° | 7574 J | 997 |
+| `homie` | **68/67 %** | 5120 | 21 cm / 40° | 7183 J | 1084 |
+| `wbc_agile` | **40/31 %** | 512 | 44 cm / 11° | 6144 J | 1034 |
+| `sonic` | **53/19 %** | 32 | 40 cm / 10° | 8946 J | 1117 |
+| `mimic_lite` | **23/26 %** | 512 | 80 cm / 13° | 11056 J | 1498 |
+| `robomimic` | **17/17 %** | 512 | 173 cm / 15° | - | - |
+| `asap` | **13/18 %** | 512 | 126 cm / 34° | - | - |
+| `run_residual` | **13/16 %** | 512 | 533 cm / 15° | - | - |
+| `falcon` | **3/2 %** | 512 | 53 cm / 19° | - | - |
+| `openwbt` | **0/4 %** | 512 | 82 cm / 51° | - | - |
+| `rl_gym` | **0/3 %** | 512 | 105 cm / 25° | - | - |
+| `handoff` | **1/1 %** | 512 | 144 cm / 23° | - | - |
+| `dm_agile` | **2/0 %** | 512 | 55 cm / 89° | - | - |
+| `rl_lab` | **1/0 %** | 512 | 71 cm / 73° | - | - |
+| `wty_cpp` | **0/0 %** | 512 | 50 cm / 27° | - | - |
+| `bfm_zero` | **0/0 %** | 512 | 418 cm / 73° | - | - |
+| `holosoma` | **0/0 %** | 512 | 85 cm / 49° | - | - |
+| `zealot` | **0/0 %** | 512 | 315 cm / 87° | - | - |
+| `rl_mjlab` | **0/0 %** | 512 | 243 cm / 65° | - | - |
+| `dm_march` | **0/0 %** | 512 | 147 cm / 91° | - | - |
+| `legged_rl_lab` | **0/0 %** | 512 | 224 cm / 84° | - | - |
+| `schoi` | **0/0 %** | 512 | 173 cm / 88° | - | - |
+| `g1_gym` | **0/0 %** | 512 | 109 cm / 89° | - | - |
+| `nanog1` | **0/0 %** | 512 | 82 cm / 63° | - | - |
+| `clobot` | **0/0 %** | 512 | 128 cm / 79° | - | - |
+| `wcompton` | **0/0 %** | 512 | 134 cm / 67° | - | - |
+| `stepdown` | **0/0 %** | 512 | 97 cm / 63° | - | - |
+| ~~`handoff_with_arms`~~\*\* | ~~**48/51 %**~~ | ~~512~~ | ~~17 cm / 9°~~ | ~~6819 J~~ | ~~1229~~ |
+| ~~`clobot_with_arms`~~\*\* | ~~**7/5 %**~~ | ~~512~~ | ~~41 cm / 21°~~ | - | - |
 
 `gr00t_wbc` is HOMIE v2, not an independent policy family. Its author
 developed it at GEAR as the successor to `homie`, with substantial

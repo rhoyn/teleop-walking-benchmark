@@ -368,7 +368,7 @@ int main(
   if (argc < 2) {
     std::cerr << "usage: table CAMPAIGN.csv...\n"
               << "  one round of one policy on one engine per file, as in\n"
-              << "  table results/r0[0-3].*.csv\n";
+              << "  table results/*.csv\n";
     return 1;
   }
   try {
