@@ -15,7 +15,7 @@ CORESEQ=$(mktemp -t benchmark-core.XXXXXX)
 echo 0 >"$CORESEQ"
 GPUDIR=$(mktemp -d -t benchmark-gpu.XXXXXX)
 GPUSLOTS=$(((JOBS + NGPUS - 1) / NGPUS))
-export CPUS NICE NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
+export RUNS CPUS NICE NCORES CORESEQ NGPUS GPUDIR GPUSLOTS
 
 POLICIES=$(for d in policies/*/; do [ -f "$d/policy.cpp" ] && basename "$d"; done |
   grep -vE '^(decoupled_wbc|gr00t_wbc)$')
