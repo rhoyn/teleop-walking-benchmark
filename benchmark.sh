@@ -38,6 +38,21 @@ grove
 amo
 '
 
+ONLY='
+tier_b.r00.huru.mujoco
+tier_b.r00.huru.physx
+tier_b.r00.josabb.mujoco
+tier_b.r00.josabb.physx
+tier_b.r00.mimic_lite.mujoco
+tier_b.r00.mimic_lite.physx
+tier_b.r00.mturan33.mujoco
+tier_b.r00.mturan33.physx
+tier_b.r00.sonic.mujoco
+tier_b.r00.sonic.physx
+tier_b.r00.sunny.mujoco
+tier_b.r00.sunny.physx
+'
+
 RUN='
   TIER=$0
   ROUND=$1
@@ -111,6 +126,10 @@ for r in $(seq 0 $((ROUNDS - 1))); do
     rounds=1
     echo "$TIER_A" | grep -qxF "$p" && tier=tier_a && rounds=$ROUNDS
     [ "$r" -lt "$rounds" ] || continue
-    for e in mujoco physx; do echo "$tier $r $p $e"; done
+    for e in mujoco physx; do
+      o=$tier.$(printf 'r%02d' "$r").$p.$e
+      [ -z "$ONLY" ] || echo "$ONLY" | grep -qxF "$o" || continue
+      echo "$tier $r $p $e"
+    done
   done
 done | xargs -P "$JOBS" -n 4 bash -c "$RUN"
