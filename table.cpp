@@ -288,10 +288,6 @@ std::vector<std::string> ordered(
         const Totals& ta = totals.at(a);
         const Totals& tb = totals.at(b);
 
-        const double pa = percent(ta.completed, ta.runs);
-        const double pb = percent(tb.completed, tb.runs);
-        if (pa != pb) return pa > pb;
-
         const double sa = mean_survival(ta);
         const double sb = mean_survival(tb);
         if (sa != sb) return sa > sb;
@@ -324,6 +320,11 @@ std::string both(const Totals& t) {
   return rate(t.done_mj, t.runs_mj) + "/" + rate(t.done_px, t.runs_px) + " %";
 }
 
+std::string survival_cell(const Totals& t) {
+  if (t.runs == 0) return "-";
+  return fixed(mean_survival(t), 1);
+}
+
 std::string runs_cell(const Totals& t) {
   if (t.runs_mj == 0 && t.runs_px == 0) return "-";
   if (t.runs_mj == t.runs_px) return std::to_string(t.runs_mj);
@@ -336,6 +337,7 @@ std::string row(
 ) {
   const double weight = static_cast<double>(t.scored);
   const std::vector<std::string> cells = {
+      survival_cell(t),
       both(t),
       runs_cell(t),
       t.scored > 0
@@ -376,11 +378,11 @@ int main(
     for (int i = 1; i < argc; ++i) table::accumulate(argv[i], totals);
     if (totals.empty()) throw std::runtime_error("table: no runs to pool");
 
-    std::cout
-        << "| `--policy` | completed<br>mujoco/physx | runs | err<br>pos/yaw "
-           "| walk<br>battery<br>energy<br>consumed "
-           "| walk<br>vibrations |\n"
-        << "|---:|---:|---:|---:|---:|---:|\n";
+    std::cout << "| `--policy` | mean<br>survival s "
+                 "| completed<br>mujoco/physx | runs | err<br>pos/yaw "
+                 "| walk<br>battery<br>energy<br>consumed "
+                 "| walk<br>vibrations |\n"
+              << "|---:|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }
