@@ -54,10 +54,24 @@ struct Totals {
   long diverged = 0;
   double pos = 0.0;
   double yaw = 0.0;
+  long scored_mj = 0;
+  long scored_px = 0;
+  double pos_mj = 0.0;
+  double pos_px = 0.0;
+  double yaw_mj = 0.0;
+  double yaw_px = 0.0;
 
   long finished = 0;
   double walk_e = 0.0;
   double walk_v = 0.0;
+  double survival_mj = 0.0;
+  double survival_px = 0.0;
+  long finished_mj = 0;
+  long finished_px = 0;
+  double walk_e_mj = 0.0;
+  double walk_e_px = 0.0;
+  double walk_v_mj = 0.0;
+  double walk_v_px = 0.0;
 };
 
 void split(
@@ -145,10 +159,50 @@ std::string cell(
     long count,
     long runs,
     int places,
-    const std::string& unit
+    const std::string& unit,
+    double scale = 1.0
 ) {
   if (count * FLOOR_DENOMINATOR < runs * FLOOR_NUMERATOR) return "-";
-  return fixed(sum / static_cast<double>(count), places) + unit;
+  return fixed(scale * sum / static_cast<double>(count), places) + unit;
+}
+
+std::string per_engine(
+    double s_mj,
+    long n_mj,
+    double s_px,
+    long n_px,
+    int places,
+    const std::string& unit
+) {
+  if (n_mj == 0 && n_px == 0) return "-";
+  const std::string a = n_mj ? fixed(s_mj / n_mj, places) : "-";
+  const std::string b = n_px ? fixed(s_px / n_px, places) : "-";
+  return a + "/" + b + unit;
+}
+
+std::string per_engine_floor(
+    double s_mj,
+    long fin_mj,
+    long runs_mj,
+    double s_px,
+    long fin_px,
+    long runs_px,
+    int places,
+    double scale
+) {
+  auto one = [&](double s, long fin, long runs) -> std::string {
+    if (fin * FLOOR_DENOMINATOR < runs * FLOOR_NUMERATOR) return "-";
+    return fixed(scale * s / static_cast<double>(fin), places);
+  };
+  if (runs_mj == 0 && runs_px == 0) return "-";
+  return one(s_mj, fin_mj, runs_mj) + "/" + one(s_px, fin_px, runs_px);
+}
+
+std::string name_md(const std::string& name) {
+  size_t p = name.find("_h0");
+  if (p == std::string::npos) p = name.find("_with");
+  if (p == std::string::npos) return "`" + name + "`";
+  return "`" + name.substr(0, p) + "`<br>`" + name.substr(p + 1) + "`";
 }
 
 std::map<
@@ -228,6 +282,7 @@ void accumulate(
     Totals& t = totals[field[policy_at]];
     ++t.runs;
     t.survival += number(field[survival_at]);
+    (mujoco ? t.survival_mj : t.survival_px) += number(field[survival_at]);
     if (mujoco) {
       ++t.runs_mj;
       if (field[outcome_at] == "complete") ++t.done_mj;
@@ -247,12 +302,33 @@ void accumulate(
       ++t.scored;
       t.pos += pos;
       t.yaw += yaw;
+      if (mujoco) {
+        ++t.scored_mj;
+        t.pos_mj += pos;
+        t.yaw_mj += yaw;
+      } else {
+        ++t.scored_px;
+        t.pos_px += pos;
+        t.yaw_px += yaw;
+      }
     }
 
     if (complete && scored) {
       ++t.finished;
-      for (const size_t at : energy) t.walk_e += number(field[at]);
-      for (const size_t at : vibration) t.walk_v += number(field[at]);
+      double e = 0.0, v = 0.0;
+      for (const size_t at : energy) e += number(field[at]);
+      for (const size_t at : vibration) v += number(field[at]);
+      t.walk_e += e;
+      t.walk_v += v;
+      if (mujoco) {
+        ++t.finished_mj;
+        t.walk_e_mj += e;
+        t.walk_v_mj += v;
+      } else {
+        ++t.finished_px;
+        t.walk_e_px += e;
+        t.walk_v_px += v;
+      }
     }
   }
 }
@@ -317,12 +393,11 @@ std::string rate(
 
 std::string both(const Totals& t) {
   if (t.runs_mj == 0 && t.runs_px == 0) return "-";
-  return rate(t.done_mj, t.runs_mj) + "/" + rate(t.done_px, t.runs_px) + " %";
+  return rate(t.done_mj, t.runs_mj) + "/" + rate(t.done_px, t.runs_px);
 }
 
 std::string survival_cell(const Totals& t) {
-  if (t.runs == 0) return "-";
-  return fixed(mean_survival(t), 1);
+  return per_engine(t.survival_mj, t.runs_mj, t.survival_px, t.runs_px, 1, "");
 }
 
 std::string runs_cell(const Totals& t) {
@@ -335,23 +410,39 @@ std::string row(
     const std::string& name,
     const Totals& t
 ) {
-  const double weight = static_cast<double>(t.scored);
   const std::vector<std::string> cells = {
       survival_cell(t),
       both(t),
       runs_cell(t),
-      t.scored > 0
-          ? fixed(t.pos / weight, 0) + " cm / " + fixed(t.yaw / weight, 0) + "°"
-          : "-",
-      cell(t.walk_e, t.finished, t.runs, 0, " J"),
-      cell(t.walk_v, t.finished, t.runs, 0, "")
+      per_engine(t.pos_mj, t.scored_mj, t.pos_px, t.scored_px, 0, ""),
+      per_engine(t.yaw_mj, t.scored_mj, t.yaw_px, t.scored_px, 0, ""),
+      per_engine_floor(
+          t.walk_e_mj,
+          t.finished_mj,
+          t.runs_mj,
+          t.walk_e_px,
+          t.finished_px,
+          t.runs_px,
+          1,
+          0.001
+      ),
+      per_engine_floor(
+          t.walk_v_mj,
+          t.finished_mj,
+          t.runs_mj,
+          t.walk_v_px,
+          t.finished_px,
+          t.runs_px,
+          1,
+          0.001
+      )
   };
 
   const bool unranked = is_unranked(name);
   std::ostringstream out;
   const std::string mark = needs_sim_velocity(name) ? "\\*" : "";
   out << "| "
-      << (unranked ? "~~`" + name + "`~~\\*\\*" : "`" + name + "`" + mark);
+      << (unranked ? "~~" + name_md(name) + "~~\\*\\*" : name_md(name) + mark);
   for (size_t i = 0; i < cells.size(); ++i) {
     std::string text = i < 1 ? "**" + cells[i] + "**" : cells[i];
     if (unranked && cells[i] != "-") text = "~~" + text + "~~";
@@ -378,11 +469,13 @@ int main(
     for (int i = 1; i < argc; ++i) table::accumulate(argv[i], totals);
     if (totals.empty()) throw std::runtime_error("table: no runs to pool");
 
-    std::cout << "| `--policy` | mean<br>survival s "
-                 "| completed<br>mujoco/physx | runs | err<br>pos/yaw "
-                 "| walk<br>battery<br>energy<br>consumed "
-                 "| walk<br>vibrations |\n"
-              << "|---:|---:|---:|---:|---:|---:|---:|\n";
+    std::cout << "| `--policy` | mean<br>survival<br>sec<br>mujoco<br>physx "
+                 "| completed<br>percent<br>mujoco<br>physx | runs "
+                 "| pos<br>err<br>cm<br>mujoco<br>physx | yaw<br>err<br>"
+                 "deg<br>mujoco<br>physx "
+                 "| walk<br>energy<br>KJ<br>mujoco<br>physx "
+                 "| walk<br>vibrations<br>mujoco<br>physx |\n"
+              << "|---:|---:|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }
