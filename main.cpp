@@ -1616,6 +1616,8 @@ int run(
   double realtime = 0.0;
   bool preview_on = false;
   std::string record_dir;
+  bool plan_only = false;
+  std::string trace;
   std::string policy_name = "gr00t_wbc_h074_p000";
   PhysicsEngine engine = PhysicsEngine::kPhysx;
   std::string graph_path = "build/mjwarp/g1";
@@ -1648,6 +1650,10 @@ int run(
       preview_on = true;
     else if (!std::strcmp(argv[i], "--record") && i + 1 < argc)
       record_dir = argv[++i];
+    else if (!std::strcmp(argv[i], "--plan-only"))
+      plan_only = true;
+    else if (!std::strcmp(argv[i], "--trace") && i + 1 < argc)
+      trace = argv[++i];
     else if (!std::strcmp(argv[i], "--policy") && i + 1 < argc)
       policy_name = argv[++i];
     else if (!std::strcmp(argv[i], "--runids") && i + 1 < argc) {
@@ -1675,6 +1681,9 @@ int run(
           "  --realtime R      pace the run at R times the wall clock\n"
           "  --preview         watch one robot in a window\n"
           "  --record DIR      write DIR/NAME.mp4 for one robot\n"
+          "  --plan-only       build the TensorRT plan for this batch, then "
+          "exit\n"
+          "  --trace PATH      robot and target pose every 25 ms\n"
           "  --help            this\n",
           WALK_S
       );
@@ -1702,6 +1711,7 @@ int run(
 
   std::unique_ptr<policy_api::Policy> pol = make_policy(policy_name);
   pol->init(envs);
+  if (plan_only) return 0;
   const policy_api::Limits LIM = pol->limits();
 
   float kp[NUM_MOTOR], kd[NUM_MOTOR];
@@ -1801,8 +1811,18 @@ int run(
   double view_tx = 0.0, view_ty = 0.0, view_tyaw = 0.0;
   bool view_has = false;
   std::vector<float> h_mq(size_t(envs) * NUM_MOTOR);
+  std::vector<float> h_tq(size_t(envs) * NUM_MOTOR);
+  std::vector<float> h_dq(size_t(envs) * NUM_MOTOR);
+  std::vector<float> h_gy(size_t(envs) * 3);
   const double dt = phys->timestep();
   const int per_control = std::max(1, int(std::lround(PERIOD_S / dt)));
+  std::ofstream trace_out;
+  if (!trace.empty()) {
+    trace_out.open(trace);
+    trace_out << "runid,t,x,y,yaw,tx,ty,tyaw,dist,yaw_err,vx,vy,wz,target,"
+                 "pos_reached,yaw_reached,z,pitch,lfz,rfz,lknee,rknee,lank,"
+                 "rank,lhip,rhip,bvx,thip,tknee,tank,dhip,dknee,dank,gy\n";
+  }
   const double total_s = init_s + walk_s;
   const int steps = int(total_s / dt);
   const auto t0 = std::chrono::steady_clock::now();
@@ -1823,6 +1843,32 @@ int run(
     {
       auto a = tick();
       if (control) phys->read();
+      if (control && trace_out.is_open()) {
+        cudaMemcpy(
+            h_mq.data(),
+            phys->motor_q(),
+            h_mq.size() * sizeof(float),
+            cudaMemcpyDeviceToHost
+        );
+        cudaMemcpy(
+            h_tq.data(),
+            phys->q_target(),
+            h_tq.size() * sizeof(float),
+            cudaMemcpyDeviceToHost
+        );
+        cudaMemcpy(
+            h_dq.data(),
+            phys->motor_dq(),
+            h_dq.size() * sizeof(float),
+            cudaMemcpyDeviceToHost
+        );
+        cudaMemcpy(
+            h_gy.data(),
+            phys->gyro(),
+            h_gy.size() * sizeof(float),
+            cudaMemcpyDeviceToHost
+        );
+      }
       t_read += secs(a, tick());
     }
 
@@ -1997,6 +2043,39 @@ int run(
             cmd[0] = std::clamp(cmd[0], LIM.vx_min, LIM.vx_max);
             cmd[1] = std::clamp(cmd[1], -LIM.vy_abs, LIM.vy_abs);
             cmd[2] = std::clamp(cmd[2], -LIM.yaw_rate_abs, LIM.yaw_rate_abs);
+            if (trace_out.is_open() &&
+                std::floor(elapsed / 0.025) !=
+                    std::floor((elapsed - PERIOD_S) / 0.025)) {
+              trace_out << r.run_id << ',' << elapsed << ',' << wx << ',' << wy
+                        << ',' << wyaw << ',' << tx << ',' << ty << ',' << tyaw
+                        << ',' << dist << ',' << yaw_err << ',' << cmd[0] << ','
+                        << cmd[1] << ',' << cmd[2] << ',' << index << ','
+                        << r.pos_reached << ',' << r.yaw_reached << ',' << p[6]
+                        << ','
+                        << std::asin(
+                               std::clamp(
+                                   2.0 * (p[3] * p[1] - p[2] * p[0]),
+                                   -1.0,
+                                   1.0
+                               )
+                           )
+                        << ',' << phys->foot_height()[size_t(e) * 2] << ','
+                        << phys->foot_height()[size_t(e) * 2 + 1] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 3] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 9] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 4] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 10] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 0] << ','
+                        << h_mq[size_t(e) * NUM_MOTOR + 6] << ','
+                        << phys->body_speed()[size_t(e) * 2] << ','
+                        << h_tq[size_t(e) * NUM_MOTOR + 0] << ','
+                        << h_tq[size_t(e) * NUM_MOTOR + 3] << ','
+                        << h_tq[size_t(e) * NUM_MOTOR + 4] << ','
+                        << h_dq[size_t(e) * NUM_MOTOR + 0] << ','
+                        << h_dq[size_t(e) * NUM_MOTOR + 3] << ','
+                        << h_dq[size_t(e) * NUM_MOTOR + 4] << ','
+                        << h_gy[size_t(e) * 3 + 1] << '\n';
+            }
           }
         }
         for (int k = 0; k < 3; ++k) h_cmd[size_t(e) * 3 + k] = float(cmd[k]);
