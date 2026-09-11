@@ -173,7 +173,7 @@ __device__ inline const float* frame_at(
     int len,
     int f
 ) {
-  const int last = len - 1;
+  const int last = len > 0 ? len - 1 : 0;
   const int i = f < 0 ? 0 : (f > last ? last : f);
   return motion + size_t(i) * FRAME;
 }
@@ -377,6 +377,7 @@ __global__ void k_mimic_lite_apply(
 
 __global__ void k_mimic_lite_past(
     const float* __restrict__ motion,
+    const float* __restrict__ arm_pose,
     const int* __restrict__ len,
     const int* __restrict__ cursor,
     float* __restrict__ past,
@@ -393,7 +394,13 @@ __global__ void k_mimic_lite_past(
   const int first = tick == 0 ? 0 : ring_slot(tick, 0, PAST_RING);
   const int last = tick == 0 ? PAST_RING - 1 : first;
   for (int s = first; s <= last; ++s) {
-    for (int k = 0; k < FRAME; ++k) ring[size_t(s) * FRAME + k] = now[k];
+    float* slot = ring + size_t(s) * FRAME;
+    for (int k = 0; k < FRAME; ++k) slot[k] = now[k];
+    for (int j = 0; j < NUM_ACTIONS; ++j) {
+      const int mj = D_MJ_OF_IL[j];
+      if (mj >= NUM_OWNED)
+        slot[F_Q + j] = arm_pose[env * POLICY_NUM_MOTOR + mj];
+    }
   }
 }
 
@@ -485,8 +492,9 @@ __global__ void k_mimic_lite_obs(
 
     for (int j = 0; j < NUM_ACTIONS; ++j) {
       const int mj = D_MJ_OF_IL[j];
-      o[72 + k * NUM_ACTIONS + j] =
-          mj < NUM_OWNED ? fr[F_Q + j] : arm_pose[env * POLICY_NUM_MOTOR + mj];
+      o[72 + k * NUM_ACTIONS + j] = mj < NUM_OWNED || step < 0
+                                        ? fr[F_Q + j]
+                                        : arm_pose[env * POLICY_NUM_MOTOR + mj];
     }
   }
 
@@ -592,24 +600,34 @@ struct Policy : policy_api::Policy {
     return p;
   }
 
+  static float* filled(
+      int n,
+      float value
+  ) {
+    float* p = zeros(size_t(n));
+    const std::vector<float> h(size_t(n), value);
+    cudaMemcpy(p, h.data(), h.size() * sizeof(float), cudaMemcpyHostToDevice);
+    return p;
+  }
+
   void init(int n) override {
     envs = n;
 
     planner = policy_api::engine_make(
-        "policies/sonic/planner_sonic_f32.onnx",
-        1,
-        {{"context_mujoco_qpos", {1, CTX_FRAMES, QPOS}},
-         {"mode", {1}},
-         {"target_vel", {1}},
-         {"movement_direction", {1, 3}},
-         {"facing_direction", {1, 3}},
-         {"random_seed", {1}},
-         {"height", {1}},
-         {"has_specific_target", {1, 1}},
-         {"specific_target_positions", {1, CTX_FRAMES, 3}},
-         {"specific_target_headings", {1, CTX_FRAMES}},
-         {"allowed_pred_num_tokens", {1, 11}}},
-        {{"mujoco_qpos", {1, PLAN_FRAMES, QPOS}}, {"num_pred_frames", {1}}}
+        "policies/sonic/planner_sonic_rows.onnx",
+        n,
+        {{"context_mujoco_qpos", {-1, CTX_FRAMES, QPOS}},
+         {"mode", {-1}},
+         {"target_vel", {-1}},
+         {"movement_direction", {-1, 3}},
+         {"facing_direction", {-1, 3}},
+         {"random_seed", {-1}},
+         {"height", {-1}},
+         {"has_specific_target", {-1, 1}},
+         {"specific_target_positions", {-1, CTX_FRAMES, 3}},
+         {"specific_target_headings", {-1, CTX_FRAMES}},
+         {"allowed_pred_num_tokens", {-1, 11}}},
+        {{"mujoco_qpos", {-1, PLAN_FRAMES, QPOS}}, {"num_pred_frames", {-1}}}
     );
 
     actor = policy_api::engine_make(
@@ -647,27 +665,30 @@ struct Policy : policy_api::Policy {
     d_act = zeros(size_t(n) * NUM_ACTIONS);
     d_priv = zeros(size_t(n) * PRIV_DIM);
 
-    d_seed = zeros(1);
-    d_height = zeros(1);
-    d_hst = zeros(1);
-    d_stp = zeros(CTX_FRAMES * 3);
-    d_sth = zeros(CTX_FRAMES);
-    d_allow = zeros(11);
-    const float seed = PLAN_SEED, height = -1.0f;
-    cudaMemcpy(d_seed, &seed, sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_height, &height, sizeof(float), cudaMemcpyHostToDevice);
-    float allow[11] = {};
-    for (int k = 0; k < 6; ++k) allow[k] = 1.0f;
-    cudaMemcpy(d_allow, allow, sizeof(allow), cudaMemcpyHostToDevice);
+    d_seed = filled(n, PLAN_SEED);
+    d_height = filled(n, -1.0f);
+    d_hst = zeros(size_t(n));
+    d_stp = zeros(size_t(n) * CTX_FRAMES * 3);
+    d_sth = zeros(size_t(n) * CTX_FRAMES);
+    d_allow = zeros(size_t(n) * 11);
+    std::vector<float> allow(size_t(n) * 11, 0.0f);
+    for (int e = 0; e < n; ++e)
+      for (int k = 0; k < 6; ++k) allow[size_t(e) * 11 + k] = 1.0f;
+    cudaMemcpy(
+        d_allow,
+        allow.data(),
+        allow.size() * sizeof(float),
+        cudaMemcpyHostToDevice
+    );
   }
 
-  void plan_row(int e) {
+  void plan() {
     const float* in[11] = {
-        d_ctx + size_t(e) * CTX_FRAMES * QPOS,
-        d_mode + e,
-        d_vel + e,
-        d_move + size_t(e) * 3,
-        d_face + size_t(e) * 3,
+        d_ctx,
+        d_mode,
+        d_vel,
+        d_move,
+        d_face,
         d_seed,
         d_height,
         d_hst,
@@ -675,9 +696,8 @@ struct Policy : policy_api::Policy {
         d_sth,
         d_allow
     };
-    float* out[2] = {d_qpos + size_t(e) * PLAN_FRAMES * QPOS, d_nframes + e};
-    policy_api::engine_run(*planner, in, out, 1);
-    cudaStreamSynchronize(nullptr);
+    float* out[2] = {d_qpos, d_nframes};
+    policy_api::engine_run(*planner, in, out, envs);
   }
 
   void step(const policy_api::Ctx& c) override {
@@ -705,7 +725,7 @@ struct Policy : policy_api::Policy {
           d_ctx,
           envs
       );
-      for (int e = 0; e < envs; ++e) plan_row(e);
+      plan();
       k_mimic_lite_apply<<<blocks, threads>>>(
           c.base_quat,
           d_qpos,
@@ -725,6 +745,7 @@ struct Policy : policy_api::Policy {
 
     k_mimic_lite_past<<<blocks, threads>>>(
         d_motion,
+        c.arm_pose,
         d_len,
         d_cursor,
         d_past,

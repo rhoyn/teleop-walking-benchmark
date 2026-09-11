@@ -47,9 +47,8 @@ fleet size — re-record when the model or `--runs` changes:
 whole task. A policy earns depth by tier: tier A, the eleven that complete at
 least 60 % averaged over the two engines, ran ten rounds, 5120 run ids; tier B
 ran one, since a policy that falls most of the time needs no fourth decimal
-place. `sonic` and `mimic_lite` are slow, so they run ten rounds of 64. The
-`runs` column carries each policy's own count, so no row is read against a
-total it never had.
+place. The `runs` column carries each policy's own count, so no row is read
+against a total it never had.
 
 Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX through its
 GPU solver.
@@ -101,6 +100,11 @@ optimisations across the stack, so `gr00t_wbc` and `homie` are the same lineage
 rather than separate entries. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
 
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
+
+`mimic_lite` is MimicLite-ROA driven by the SONIC planner: the released ROA
+tracker follows reference motion that the harness has `sonic`'s planner
+generate from the same velocity command, since mimic-lite ships no planner of
+its own.
 
 ### Why two policies appear four times each
 

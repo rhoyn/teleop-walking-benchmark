@@ -4,7 +4,6 @@ cd "$(dirname "$0")"
 
 RUNS=${RUNS:-512}
 ROUNDS=${ROUNDS:-10}
-SLOW_DIV=${SLOW_DIV:-8}
 NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "  MIG ")
 [ "$NGPUS" -ge 1 ] || NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "^GPU ")
 [ "$NGPUS" -ge 1 ] || NGPUS=1
@@ -39,18 +38,13 @@ grove
 amo
 '
 
-SLOW='
-sonic
-mimic_lite
-'
-
 RUN='
   TIER=$0
   ROUND=$1
-  n=$2
-  P=$3
-  ENGINE=$4
+  P=$2
+  ENGINE=$3
   R=$(printf "r%02d" "$ROUND")
+  n=$RUNS
   f=$((ROUND * n))
   out=$TIER.$R.$P.$ENGINE
   CORE=$(
@@ -115,10 +109,8 @@ for r in $(seq 0 $((ROUNDS - 1))); do
   for p in $POLICIES; do
     tier=tier_b
     rounds=1
-    n=$RUNS
     echo "$TIER_A" | grep -qxF "$p" && tier=tier_a && rounds=$ROUNDS
-    echo "$SLOW" | grep -qxF "$p" && rounds=$ROUNDS && n=$((RUNS / SLOW_DIV))
     [ "$r" -lt "$rounds" ] || continue
-    for e in mujoco physx; do echo "$tier $r $n $p $e"; done
+    for e in mujoco physx; do echo "$tier $r $p $e"; done
   done
-done | xargs -P "$JOBS" -n 5 bash -c "$RUN"
+done | xargs -P "$JOBS" -n 4 bash -c "$RUN"

@@ -14,8 +14,8 @@ Thirty-four policies, and every checkpoint they load is third-party. Nineteen
 weight files are committed beside the policy that loads them; ./download_weights.sh
 pulls twenty-seven from their upstream repositories, so you take those under the
 upstream's terms rather than under this repository's; ./export_onnx.py writes
-eight on your machine -- six ONNX conversions, sonic's retyped planner and
-bfm_zero's latent table. Every checkpoint can now be obtained automatically,
+ten on your machine -- six ONNX conversions, sonic's retyped planner, its
+batched planner and encoder, and bfm_zero's latent table. Every checkpoint can now be obtained automatically,
 though mturan33's needs a HuggingFace token whose account has accepted its
 gate; wcompton's, the one exception until its upstream came back, is fetched
 again.
@@ -212,11 +212,18 @@ refuses a download that does not match it.
   sonic  policies/sonic/model_decoder.onnx  c724  NVIDIA Open Model  ./download_weights.sh
   sonic  policies/sonic/planner_sonic.onnx  39b5  NVIDIA Open Model  ./download_weights.sh
   sonic  policies/sonic/planner_sonic_f32.onnx  a8a5  NVIDIA Open Model  ./export_onnx.py, from planner_sonic.onnx
+  sonic  policies/sonic/planner_sonic_rows.onnx  6460  NVIDIA Open Model  ./export_onnx.py, from planner_sonic_f32.onnx
+  sonic  policies/sonic/model_encoder_rows.onnx  1845  NVIDIA Open Model  ./export_onnx.py, from model_encoder.onnx
     nvidia/GEAR-SONIC, the authors' own release
     planner_sonic_f32.onnx is the upstream planner with its four int64 inputs
     and its int32 output retyped to float32, so TensorRT binds one dtype; a
     Cast at each of those five tensors restores the original inside the graph
     and no weight is touched
+    planner_sonic_rows.onnx and model_encoder_rows.onnx are those two graphs,
+    which upstream traced for one robot, rewritten to take a batch of rows:
+    every tensor that depends on the input gains a leading batch axis and every
+    node is replaced by its batched form, so TensorRT plans the whole field in
+    one call instead of one robot per call; the weights are the same bytes
     https://huggingface.co/nvidia/GEAR-SONIC
     the checkpoints are released on Hugging Face only; the code that trains and
     deploys them is NVlabs/GR00T-WholeBodyControl, the same repository gr00t_wbc

@@ -598,31 +598,41 @@ struct Policy : policy_api::Policy {
     return p;
   }
 
+  static float* filled(
+      int n,
+      float value
+  ) {
+    float* p = zeros(size_t(n));
+    const std::vector<float> h(size_t(n), value);
+    cudaMemcpy(p, h.data(), h.size() * sizeof(float), cudaMemcpyHostToDevice);
+    return p;
+  }
+
   void init(int n) override {
     envs = n;
 
     planner = policy_api::engine_make(
-        "policies/sonic/planner_sonic_f32.onnx",
-        1,
-        {{"context_mujoco_qpos", {1, CTX_FRAMES, QPOS}},
-         {"mode", {1}},
-         {"target_vel", {1}},
-         {"movement_direction", {1, 3}},
-         {"facing_direction", {1, 3}},
-         {"random_seed", {1}},
-         {"height", {1}},
-         {"has_specific_target", {1, 1}},
-         {"specific_target_positions", {1, CTX_FRAMES, 3}},
-         {"specific_target_headings", {1, CTX_FRAMES}},
-         {"allowed_pred_num_tokens", {1, 11}}},
-        {{"mujoco_qpos", {1, PLAN_FRAMES, QPOS}}, {"num_pred_frames", {1}}}
+        "policies/sonic/planner_sonic_rows.onnx",
+        n,
+        {{"context_mujoco_qpos", {-1, CTX_FRAMES, QPOS}},
+         {"mode", {-1}},
+         {"target_vel", {-1}},
+         {"movement_direction", {-1, 3}},
+         {"facing_direction", {-1, 3}},
+         {"random_seed", {-1}},
+         {"height", {-1}},
+         {"has_specific_target", {-1, 1}},
+         {"specific_target_positions", {-1, CTX_FRAMES, 3}},
+         {"specific_target_headings", {-1, CTX_FRAMES}},
+         {"allowed_pred_num_tokens", {-1, 11}}},
+        {{"mujoco_qpos", {-1, PLAN_FRAMES, QPOS}}, {"num_pred_frames", {-1}}}
     );
 
     encoder = policy_api::engine_make(
-        "policies/sonic/model_encoder.onnx",
-        1,
-        {{"obs_dict", {1, ENC_OBS}}},
-        {{"encoded_tokens", {1, TOKEN}}}
+        "policies/sonic/model_encoder_rows.onnx",
+        n,
+        {{"obs_dict", {-1, ENC_OBS}}},
+        {{"encoded_tokens", {-1, TOKEN}}}
     );
     decoder = policy_api::engine_make(
         "policies/sonic/model_decoder.onnx",
@@ -659,27 +669,30 @@ struct Policy : policy_api::Policy {
     d_dec = zeros(size_t(n) * DEC_OBS);
     d_act = zeros(size_t(n) * NUM_ACTIONS);
 
-    d_seed = zeros(1);
-    d_height = zeros(1);
-    d_hst = zeros(1);
-    d_stp = zeros(CTX_FRAMES * 3);
-    d_sth = zeros(CTX_FRAMES);
-    d_allow = zeros(11);
-    const float seed = PLAN_SEED, height = -1.0f;
-    cudaMemcpy(d_seed, &seed, sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_height, &height, sizeof(float), cudaMemcpyHostToDevice);
-    float allow[11] = {};
-    for (int k = 0; k < 6; ++k) allow[k] = 1.0f;
-    cudaMemcpy(d_allow, allow, sizeof(allow), cudaMemcpyHostToDevice);
+    d_seed = filled(n, PLAN_SEED);
+    d_height = filled(n, -1.0f);
+    d_hst = zeros(size_t(n));
+    d_stp = zeros(size_t(n) * CTX_FRAMES * 3);
+    d_sth = zeros(size_t(n) * CTX_FRAMES);
+    d_allow = zeros(size_t(n) * 11);
+    std::vector<float> allow(size_t(n) * 11, 0.0f);
+    for (int e = 0; e < n; ++e)
+      for (int k = 0; k < 6; ++k) allow[size_t(e) * 11 + k] = 1.0f;
+    cudaMemcpy(
+        d_allow,
+        allow.data(),
+        allow.size() * sizeof(float),
+        cudaMemcpyHostToDevice
+    );
   }
 
-  void plan_row(int e) {
+  void plan() {
     const float* in[11] = {
-        d_ctx + size_t(e) * CTX_FRAMES * QPOS,
-        d_mode + e,
-        d_vel + e,
-        d_move + size_t(e) * 3,
-        d_face + size_t(e) * 3,
+        d_ctx,
+        d_mode,
+        d_vel,
+        d_move,
+        d_face,
         d_seed,
         d_height,
         d_hst,
@@ -687,9 +700,8 @@ struct Policy : policy_api::Policy {
         d_sth,
         d_allow
     };
-    float* out[2] = {d_qpos + size_t(e) * PLAN_FRAMES * QPOS, d_nframes + e};
-    policy_api::engine_run(*planner, in, out, 1);
-    cudaStreamSynchronize(nullptr);
+    float* out[2] = {d_qpos, d_nframes};
+    policy_api::engine_run(*planner, in, out, envs);
   }
 
   void step(const policy_api::Ctx& c) override {
@@ -718,7 +730,7 @@ struct Policy : policy_api::Policy {
           d_ctx,
           envs
       );
-      for (int e = 0; e < envs; ++e) plan_row(e);
+      plan();
       k_sonic_apply<<<blocks, threads>>>(
           c.base_quat,
           d_qpos,
@@ -762,12 +774,7 @@ struct Policy : policy_api::Policy {
         d_enc,
         envs
     );
-    for (int e = 0; e < envs; ++e) {
-      const float* in[1] = {d_enc + size_t(e) * ENC_OBS};
-      float* out[1] = {d_token + size_t(e) * TOKEN};
-      policy_api::engine_run(*encoder, in, out, 1);
-      cudaStreamSynchronize(nullptr);
-    }
+    policy_api::engine_run(*encoder, d_enc, d_token, envs);
 
     k_sonic_decoder_obs<<<blocks, threads>>>(
         d_token,
