@@ -1,6 +1,6 @@
 # teleop-walking-benchmark
 
-https://github.com/user-attachments/assets/26b80464-e7a7-4beb-b1a8-79c8715dfaa3
+https://github.com/user-attachments/assets/a1d2430a-24ee-4409-8cc1-43f4147a1c67
 
 Thirty-four open-source Unitree G1 walking policies behind one C++ interface,
 scored on one tour in MuJoCo and PhysX.
