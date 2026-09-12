@@ -11,6 +11,8 @@ VIDEO=${VIDEO:-assets/preview.mp4}
 IMAGE=${IMAGE:-assets/preview.jpg}
 STILL=${STILL:-44.6}
 FPS=${FPS:-60}
+CRF=${CRF:-20}
+MAX_BYTES=${MAX_BYTES:-10000000}
 BIN=${BIN:-build/teleop-walking-benchmark}
 DELAY=${DELAY:-20}
 export RUNID NICE CPUS WORK BIN DELAY
@@ -72,8 +74,10 @@ nice -n "$NICE" taskset -c "$CPUS" ffmpeg -hide_banner -loglevel error -stats -y
 echo "re-encoding into $VIDEO at $FPS fps"
 nice -n "$NICE" taskset -c "$CPUS" ffmpeg -hide_banner -loglevel error -stats -y \
   -err_detect aggressive -fflags discardcorrupt -i "$WORK/montage.mp4" \
-  -r "$FPS" -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p \
+  -r "$FPS" -c:v libx264 -preset veryslow -crf "$CRF" -pix_fmt yuv420p \
   -movflags +faststart -an "$VIDEO"
+[ "$(stat -c %s "$VIDEO")" -lt "$MAX_BYTES" ] ||
+  { echo "$VIDEO is $(stat -c %s "$VIDEO") bytes, limit $MAX_BYTES" >&2; exit 1; }
 
 ffmpeg -hide_banner -loglevel error -y -ss "$STILL" -i "$VIDEO" \
   -frames:v 1 -q:v 2 "$IMAGE"
