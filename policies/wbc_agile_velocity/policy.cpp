@@ -1,4 +1,4 @@
-namespace grove {
+namespace wbc_agile_velocity {
 
 constexpr int NUM_JOINTS = 29;
 constexpr int NUM_ACTIONS = 14;
@@ -15,24 +15,30 @@ constexpr int HIST_ACT = HISTORY * NUM_ACTIONS;
 constexpr float ANG_VEL_SCALE = 0.2f;
 constexpr float JOINT_VEL_SCALE = 0.05f;
 
-#define GROVE_TO_MUJOCO_LIST                                                \
+#define WBC_AGILE_VEL_TO_MUJOCO_LIST                                        \
   0, 6, 12, 1, 7, 13, 2, 8, 14, 3, 9, 15, 22, 4, 10, 16, 23, 5, 11, 17, 24, \
       18, 25, 19, 26, 20, 27, 21, 28
 
-#define GROVE_ACTION_TO_MUJOCO_LIST 0, 6, 1, 7, 13, 2, 8, 14, 3, 9, 4, 10, 5, 11
+#define WBC_AGILE_VEL_ACTION_TO_MUJOCO_LIST \
+  0, 6, 1, 7, 13, 2, 8, 14, 3, 9, 4, 10, 5, 11
 
-#define GROVE_ACTION_TO_OBS_LIST 0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 17, 18
+#define WBC_AGILE_VEL_ACTION_TO_OBS_LIST \
+  0, 1, 3, 4, 5, 6, 7, 8, 9, 10, 13, 14, 17, 18
 
-#define GROVE_DEFAULT_POS_LIST                                                \
+#define WBC_AGILE_VEL_DEFAULT_POS_LIST                                        \
   -0.1f, -0.1f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.3f, 0.3f, -0.2f, -0.2f, \
       0.0f, 0.0f
 
-__device__ const int D_TO_MUJOCO[NUM_JOINTS] = {GROVE_TO_MUJOCO_LIST};
+__device__ const int D_TO_MUJOCO[NUM_JOINTS] = {WBC_AGILE_VEL_TO_MUJOCO_LIST};
 __device__ const int D_ACTION_TO_MUJOCO[NUM_ACTIONS] = {
-    GROVE_ACTION_TO_MUJOCO_LIST
+    WBC_AGILE_VEL_ACTION_TO_MUJOCO_LIST
 };
-__device__ const int D_ACTION_TO_OBS[NUM_ACTIONS] = {GROVE_ACTION_TO_OBS_LIST};
-__device__ const float D_DEFAULT_POS[NUM_ACTIONS] = {GROVE_DEFAULT_POS_LIST};
+__device__ const int D_ACTION_TO_OBS[NUM_ACTIONS] = {
+    WBC_AGILE_VEL_ACTION_TO_OBS_LIST
+};
+__device__ const float D_DEFAULT_POS[NUM_ACTIONS] = {
+    WBC_AGILE_VEL_DEFAULT_POS_LIST
+};
 
 const float KPS[OWNED] =
     {100, 100, 100, 200, 20, 20, 100, 100, 100, 200, 20, 20, 300, 300, 300};
@@ -78,7 +84,7 @@ const char* const FB_OUT[FEEDBACK] = {
 const int FB_WIDTH[FEEDBACK] =
     {NUM_ACTIONS, HIST_VEC, HIST_VEC, HIST_VEC, HIST_ACT, HIST_ACT, HIST_ACT};
 
-__global__ void k_grove_obs(
+__global__ void k_wbc_agile_velocity_obs(
     const float* __restrict__ motor_q,
     const float* __restrict__ motor_dq,
     const float* __restrict__ gyro,
@@ -153,7 +159,7 @@ __global__ void k_grove_obs(
     last_action[env * NUM_ACTIONS + a] = 0.0f;
 }
 
-__global__ void k_grove_act(
+__global__ void k_wbc_agile_velocity_act(
     const float* __restrict__ action,
     const float* __restrict__ arm_pose,
     float* __restrict__ q_target,
@@ -172,8 +178,9 @@ __global__ void k_grove_act(
   q_target[env * POLICY_NUM_MOTOR + WAIST_YAW] = WAIST_YAW_POS;
 }
 
-const char* const MODEL_SRC = "policies/grove/model.onnx";
-const char* const MODEL_DYNAMIC = "build/trt/grove_dynamic_batch.onnx";
+const char* const MODEL_SRC = "policies/wbc_agile_velocity/model.onnx";
+const char* const MODEL_DYNAMIC =
+    "build/trt/wbc_agile_velocity_dynamic_batch.onnx";
 
 const char* const IN_NAMES[] = {
     "root_link_quat_w",
@@ -191,13 +198,13 @@ const char* const IN_NAMES[] = {
 };
 constexpr int NUM_IN = int(sizeof(IN_NAMES) / sizeof(IN_NAMES[0]));
 
-std::string grove_bytes(std::initializer_list<int> v) {
+std::string onnx_bytes(std::initializer_list<int> v) {
   std::string s;
   for (int b : v) s.push_back(char(b));
   return s;
 }
 
-int grove_patch_all(
+int patch_all(
     std::string& blob,
     const std::string& pat,
     size_t at,
@@ -212,7 +219,7 @@ int grove_patch_all(
   return hits;
 }
 
-std::string grove_dynamic_model() {
+std::string dynamic_model() {
   namespace fs = std::filesystem;
   if (fs::exists(MODEL_DYNAMIC) && fs::exists(MODEL_SRC) &&
       fs::last_write_time(MODEL_DYNAMIC) >= fs::last_write_time(MODEL_SRC)) {
@@ -221,13 +228,15 @@ std::string grove_dynamic_model() {
 
   std::ifstream in(MODEL_SRC, std::ios::binary);
   if (!in)
-    throw std::runtime_error("grove: cannot read " + std::string(MODEL_SRC));
+    throw std::runtime_error(
+        "wbc_agile_velocity: cannot read " + std::string(MODEL_SRC)
+    );
   std::string blob(
       (std::istreambuf_iterator<char>(in)),
       std::istreambuf_iterator<char>()
   );
 
-  const std::string shape = grove_bytes(
+  const std::string shape = onnx_bytes(
       {0x4a,
        0x10,
        0x01,
@@ -247,25 +256,24 @@ std::string grove_dynamic_model() {
        0xff,
        0xff}
   );
-  if (grove_patch_all(blob, shape, 2, 0) != 1) {
+  if (patch_all(blob, shape, 2, 0) != 1) {
     throw std::runtime_error(
-        "grove: model.onnx has no single [1, -1] reshape target"
+        "wbc_agile_velocity: model.onnx has no single [1, -1] reshape target"
     );
   }
 
-  const std::string allow = grove_bytes({0x22, 0x07}) + "Reshape" +
-                            grove_bytes({0x2a, 0x10, 0x0a, 0x09}) +
-                            "allowzero" +
-                            grove_bytes({0x18, 0x01, 0xa0, 0x01, 0x02});
-  if (grove_patch_all(blob, allow, allow.size() - 4, 0) != 13) {
+  const std::string allow = onnx_bytes({0x22, 0x07}) + "Reshape" +
+                            onnx_bytes({0x2a, 0x10, 0x0a, 0x09}) + "allowzero" +
+                            onnx_bytes({0x18, 0x01, 0xa0, 0x01, 0x02});
+  if (patch_all(blob, allow, allow.size() - 4, 0) != 13) {
     throw std::runtime_error(
-        "grove: model.onnx does not carry the 13 expected reshapes"
+        "wbc_agile_velocity: model.onnx does not carry the 13 expected reshapes"
     );
   }
 
   for (int i = 0; i < NUM_IN; ++i) {
     const std::string name = IN_NAMES[i];
-    const std::string key = grove_bytes({0x0a, int(name.size())}) + name;
+    const std::string key = onnx_bytes({0x0a, int(name.size())}) + name;
     int hits = 0;
     for (size_t p = blob.find(key); p != std::string::npos;
          p = blob.find(key, p + key.size())) {
@@ -284,7 +292,8 @@ std::string grove_dynamic_model() {
     }
     if (hits != 1) {
       throw std::runtime_error(
-          "grove: model.onnx does not declare '" + name + "' as one batched row"
+          "wbc_agile_velocity: model.onnx does not declare '" + name +
+          "' as one batched row"
       );
     }
   }
@@ -298,7 +307,8 @@ std::string grove_dynamic_model() {
   {
     std::ofstream out(tmp, std::ios::binary);
     out.write(blob.data(), std::streamsize(blob.size()));
-    if (!out) throw std::runtime_error("grove: cannot write " + tmp);
+    if (!out)
+      throw std::runtime_error("wbc_agile_velocity: cannot write " + tmp);
   }
   fs::rename(tmp, MODEL_DYNAMIC);
   return MODEL_DYNAMIC;
@@ -357,7 +367,7 @@ struct Policy : policy_api::Policy {
       inputs.push_back({FB_IN[k], shape});
       outputs.push_back({FB_OUT[k], shape});
     }
-    engine = policy_api::engine_make(grove_dynamic_model(), n, inputs, outputs);
+    engine = policy_api::engine_make(dynamic_model(), n, inputs, outputs);
 
     cudaMalloc(&d_quat, size_t(n) * 4 * sizeof(float));
     cudaMalloc(&d_ang_vel, size_t(n) * 3 * sizeof(float));
@@ -380,7 +390,7 @@ struct Policy : policy_api::Policy {
     float** in_fb = d_fb[live];
     float** out_fb = d_fb[1 - live];
 
-    k_grove_obs<<<blocks, threads>>>(
+    k_wbc_agile_velocity_obs<<<blocks, threads>>>(
         c.motor_q,
         c.motor_dq,
         c.gyro,
@@ -413,14 +423,19 @@ struct Policy : policy_api::Policy {
     policy_api::engine_run(*engine, in, out, envs);
     live = 1 - live;
 
-    k_grove_act<<<blocks, threads>>>(d_action, c.arm_pose, c.q_target, envs);
+    k_wbc_agile_velocity_act<<<blocks, threads>>>(
+        d_action,
+        c.arm_pose,
+        c.q_target,
+        envs
+    );
   }
 
   const float* kp() const override { return KPS; }
   const float* kd() const override { return KDS; }
   int owned() const override { return OWNED; }
   policy_api::Limits limits() const override { return LIMITS; }
-  const char* name() const override { return "grove"; }
+  const char* name() const override { return "wbc_agile_velocity"; }
 };
 
 }

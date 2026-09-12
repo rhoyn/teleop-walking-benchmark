@@ -169,10 +169,6 @@ refuses a download that does not match it.
     (byte-identical to the ..._g1_29dof_lock_waist_rev_1_0.pt beside it)
     https://github.com/IlikeSukiyaki/G1_GYM
 
-  grove  policies/grove/model.onnx  8995  BSD-3-Clause  committed
-    Adyansh04/grove-g1, unitree_g1_velocity_e2e.onnx
-    https://github.com/Adyansh04/grove-g1
-
   handoff  policies/handoff/model.onnx  0c0f  NONE DECLARED  ./download_weights.sh
     lzyang2000/HANDOFF, deploy/ckpt/policy.onnx
     https://github.com/lzyang2000/HANDOFF
@@ -242,6 +238,20 @@ refuses a download that does not match it.
     repository is dual-licensed, but the BSD-3-Clause half covers only
     third_party/rsl_rl/patches/ and not this checkpoint
     https://github.com/nvidia-isaac/WBC-AGILE
+
+  wbc_agile_velocity  policies/wbc_agile_velocity/model.onnx  8995  Apache-2.0  committed
+    nvidia-isaac/WBC-AGILE, the Velocity-G1-History-v0 LEAPP export -- the
+    row above one checkpoint over: no height command, and fourteen joints
+    driven, the twelve of the legs plus waist roll and pitch. Same dual
+    licence, same reading of it. Its maintainer confirmed the identity
+    against this file
+    the file was taken from Adyansh04/grove-g1, which vendors it unchanged as
+    g1_controllers/policy/unitree_g1_velocity_e2e.onnx with NVIDIA's licence
+    beside it; the committed bytes are that git blob, b8c386db. This row used
+    to be named grove after that route and credited grove-g1's BSD-3-Clause
+    LICENSE, which covers only its ros2_control code, none of which runs here.
+    POLICIES_EXCLUDED.md has the rest
+    https://github.com/Adyansh04/grove-g1
 
   wcompton  policies/wcompton/model.onnx  134a  NONE DECLARED  ./download_weights.sh
     wcompton/legged_locomotion_rl, the g1_blind_flat_end2end run
@@ -324,8 +334,9 @@ Four flags worth reading twice:
   https://github.com/NVlabs/GR00T-WholeBodyControl
 
 gr00t_wbc, the candidate that wins the campaign, is NVIDIA Open Model. If
-licence terms decide your build, openwbt (Apache-2.0) is the most permissive
-candidate with a competitive position error.
+licence terms decide your build, wbc_agile_velocity and wbc_agile
+(Apache-2.0, both NVIDIA's WBC-AGILE) are the highest-placed permissively
+licensed candidates, with wbc_agile_velocity finishing more of the tour.
 
 
 2. UNITREE G1 ROBOT DESCRIPTION

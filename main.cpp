@@ -670,7 +670,6 @@ void engine_run(
 #include "policies/dm_march/policy.cpp"
 #include "policies/falcon/policy.cpp"
 #include "policies/g1_gym/policy.cpp"
-#include "policies/grove/policy.cpp"
 #include "policies/handoff/policy.cpp"
 #include "policies/holosoma/policy.cpp"
 #include "policies/homie/policy.cpp"
@@ -691,6 +690,7 @@ void engine_run(
 #include "policies/stepdown/policy.cpp"
 #include "policies/sunny/policy.cpp"
 #include "policies/wbc_agile/policy.cpp"
+#include "policies/wbc_agile_velocity/policy.cpp"
 #include "policies/wcompton/policy.cpp"
 #include "policies/wty_cpp/policy.cpp"
 #include "policies/zealot/policy.cpp"
@@ -707,7 +707,6 @@ const char* const NAMES[] = {
     "dm_march",
     "falcon",
     "g1_gym",
-    "grove",
     "handoff",
     "handoff_with_arms",
     "holosoma",
@@ -729,6 +728,7 @@ const char* const NAMES[] = {
     "stepdown",
     "sunny",
     "wbc_agile",
+    "wbc_agile_velocity",
     "wcompton",
     "wty_cpp",
     "zealot",
@@ -759,7 +759,6 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
   if (name == "dm_march") return std::make_unique<dm_march::Policy>();
   if (name == "falcon") return std::make_unique<falcon::Policy>();
   if (name == "g1_gym") return std::make_unique<g1_gym::Policy>();
-  if (name == "grove") return std::make_unique<grove::Policy>();
   if (name == "handoff") return std::make_unique<handoff::Policy>();
   if (name == "handoff_with_arms")
     return std::make_unique<handoff::WithArmsPolicy>();
@@ -782,6 +781,8 @@ std::unique_ptr<policy_api::Policy> make_policy(const std::string& name) {
   if (name == "stepdown") return std::make_unique<stepdown::Policy>();
   if (name == "sunny") return std::make_unique<sunny::Policy>();
   if (name == "wbc_agile") return std::make_unique<wbc_agile::Policy>();
+  if (name == "wbc_agile_velocity")
+    return std::make_unique<wbc_agile_velocity::Policy>();
   if (name == "wcompton") return std::make_unique<wcompton::Policy>();
   if (name == "wty_cpp") return std::make_unique<wty_cpp::Policy>();
   if (name == "zealot") return std::make_unique<zealot::Policy>();

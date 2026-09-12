@@ -34,7 +34,7 @@ decoupled_wbc_h066_p012
 decoupled_wbc_h070_p000
 decoupled_wbc_h074_p000
 homie
-grove
+wbc_agile_velocity
 amo
 '
 
