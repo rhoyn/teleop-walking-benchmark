@@ -2,24 +2,26 @@
 
 https://github.com/user-attachments/assets/26b80464-e7a7-4beb-b1a8-79c8715dfaa3
 
-Twenty-nine open-source Unitree G1 walking policies behind one C++ interface,
+Thirty-four open-source Unitree G1 walking policies behind one C++ interface,
 scored on one tour in MuJoCo and PhysX.
 [Blog post](https://rhoyn.com/stable-walk?utm_source=github)
 
 ## The task
 
-Sixty seconds, twelve waypoints, 50 Hz control over a 2 ms step. A crane holds
-a shared stance three seconds, then releases. Each segment lands a punch:
-random joint and direction, 0.08 s, up to 600 N. The score is recovery, not
-tracking. A policy owns the fifteen leg and waist joints; the fourteen arm
-joints random-walk under the harness, never still, never borrowable for
-balance. The best finishes most runs, none all.
+Ninety seconds, eighteen waypoints, 50 Hz control over a 2 ms step. A crane
+holds a shared stance three seconds, then releases. Each segment lands a punch:
+random joint and direction, 0.08 s, up to 500 N — the ceiling ramps from a
+third of that at the start to the full 500 N by the sixtieth second, and each
+punch draws half to all of it. The score is recovery, not tracking. A policy
+owns the fifteen leg and waist joints; the fourteen arm joints random-walk under
+the harness, never still, never borrowable for balance. The best finishes most
+runs, none all.
 
 ## Unified benchmark interface
 
 Every policy and every physics engine sits behind the same CUDA interface, so
 the harness runs the whole field batched on the GPU instead of one process per
-policy per run id. That is what makes 471,424 runs cheap enough to be a
+policy per run id. That is what makes 144,384 runs cheap enough to be a
 benchmark rather than a demo. Both engines step on the GPU: PhysX natively,
 MuJoCo through [MuJoCo Warp](https://github.com/google-deepmind/mujoco_warp).
 
@@ -44,14 +46,17 @@ fleet size — re-record when the model or `--runs` changes:
 ## Results
 
 144,384 runs — both engines, in rounds of 512 run ids. A run id names one
-whole task. A policy earns depth by tier: tier A, the eleven that complete at
-least 60 % averaged over the two engines, ran ten rounds, 5120 run ids; tier B
-ran one, since a policy that falls most of the time needs no fourth decimal
-place. The `runs` column carries each policy's own count, so no row is read
+whole task. A policy earns depth by tier: tier A, the eleven rows that complete
+at least 60 % averaged over the two engines, ran ten rounds, 5120 run ids; tier
+B ran one, since a policy that falls most of the time needs no fourth decimal
+place. The `runs` column carries each row's own count, so no row is read
 against a total it never had.
 
-Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX through its
-GPU solver.
+Rows are ordered by mean survival over both engines. Errors are means over
+targets reached; the walk energy and vibration columns are means over
+completed runs, and an engine's cell is blank when fewer than a fifth of its
+runs qualify. Both engines step on the GPU: MuJoCo through MuJoCo Warp, PhysX
+through its GPU solver.
 
 | `--policy` | mean<br>survival<br>sec<br>mujoco<br>physx | completed<br>percent<br>mujoco<br>physx | runs | pos<br>err<br>cm<br>mujoco<br>physx | yaw<br>err<br>deg<br>mujoco<br>physx | walk<br>energy<br>KJ<br>mujoco<br>physx | walk<br>vibrations<br>mujoco<br>physx |
 |---:|---:|---:|---:|---:|---:|---:|---:|
@@ -103,6 +108,10 @@ developed it at GEAR as the successor to `homie`, with substantial
 optimisations across the stack, so `gr00t_wbc` and `homie` are the same lineage
 rather than separate entries. Confirmed by @Elgce in InternRobotics/OpenHomie#23.
 
+\* Reads the base linear velocity straight from the simulator. No real robot
+has that sensor, so the row is ranked but the policy is not deployable as
+shipped.
+
 \*\* Unranked, because it is the same policy given all 29 joints instead of 15.
 
 `mimic_lite` is MimicLite-ROA driven by the SONIC planner: the released ROA
@@ -119,11 +128,14 @@ every row is ranked. `gr00t_wbc_h074_p000` and `decoupled_wbc_h070_p000` are
 the postures their authors call canonical.
 
 Commanded height is the only thing that moves the score, and for `gr00t_wbc` it
-buys completion by giving up tracking: 0.74 → 0.70 m is worth six points of
-completion for four centimetres of position error, and 0.66 m another four
-points for seventeen more centimetres. `decoupled_wbc` pays no such price —
-0.70 → 0.66 m gains three points and its position error stays at 12-13 cm,
-the lowest in the table. Commanded pitch does nothing for completion in either.
+buys completion by giving up tracking: 0.74 → 0.70 m is worth ten points of
+completion in MuJoCo and eight in PhysX for one and four centimetres of
+position error; 0.66 m is another seven points in MuJoCo for three more
+centimetres, while in PhysX it gives three points back and the error more than
+doubles, 19 → 44-51 cm. `decoupled_wbc` pays far less — 0.70 → 0.66 m gains
+two to four points, and its position error holds at 10-11 cm in MuJoCo, the
+lowest in the table, though PhysX drifts from 14 to 20-21 cm. Commanded pitch
+does nothing for completion in either.
 
 A wider sweep over `gr00t_wbc`'s walk/balance switch found it inert, so it is
 not reported. Read every one of these rows against the error column as well as
@@ -165,6 +177,6 @@ run ids.
 
 ## Weights
 
-Third-party; terms in [NOTICE](NOTICE) — two non-commercial, nine silent, one
-sim-only. Nineteen committed, the rest fetched or converted locally, since a
-licence travels to its conversion. `wcompton` needs your own copy.
+Third-party; terms in [NOTICE](NOTICE) — two non-commercial, eleven silent,
+one sim-only. Nineteen weight files committed, the rest fetched or converted
+locally, since a licence travels to its conversion.
