@@ -57,6 +57,7 @@ class Physics {
   virtual void meter(double dt) = 0;
   virtual const float* energy() const = 0;
   virtual const float* vibration() const = 0;
+  virtual const float* impact() const = 0;
 };
 
 std::unique_ptr<Physics> physics_make_physx(

@@ -334,6 +334,11 @@ class MjWarpPhysics : public Physics {
     p_pose_ = param<float>("obs_pose", size_t(side_.nworld) * 7);
     p_foot_ = param<float>("obs_foot", size_t(side_.nworld) * 2);
     p_speed_ = param<float>("obs_speed", size_t(side_.nworld) * 2);
+    p_istance_ = param<int>("impact_stance", size_t(side_.nworld) * 2);
+    p_ipeak_ = param<float>("impact_peak", size_t(side_.nworld) * 2);
+    p_idrop_ = param<float>("impact_drop", size_t(side_.nworld) * 2);
+    p_ivz_ = param<float>("impact_vz", size_t(side_.nworld) * 2);
+    p_impact_ = param<float>("impact", size_t(side_.nworld) * 3);
     p_qpos_ = param<float>("qpos", size_t(side_.nworld) * side_.nq);
     p_qvel_ = param<float>("qvel", size_t(side_.nworld) * side_.nv);
     p_ctrl_ = param<float>("ctrl", size_t(side_.nworld) * side_.nu);
@@ -345,6 +350,7 @@ class MjWarpPhysics : public Physics {
     host_speed_.assign(n * 2, 0.0f);
     host_energy_.assign(n * PHYS_GROUPS, 0.0f);
     host_vibration_.assign(n * PHYS_GROUPS, 0.0f);
+    host_impact_.assign(n * 3, 0.0f);
     alive_.assign(n, 1);
     host_pjoint_.assign(size_t(side_.nworld), -1);
     host_pframe_.assign(size_t(side_.nworld), 0);
@@ -455,6 +461,16 @@ class MjWarpPhysics : public Physics {
            size_t(side_.nworld) * PHYS_NUM_MOTOR * sizeof(float)
        ),
        "dq_prev");
+    ck(cudaMemset(p_istance_, 0, size_t(side_.nworld) * 2 * sizeof(int)),
+       "impact_stance");
+    ck(cudaMemset(p_ipeak_, 0, size_t(side_.nworld) * 2 * sizeof(float)),
+       "impact_peak");
+    ck(cudaMemset(p_idrop_, 0, size_t(side_.nworld) * 2 * sizeof(float)),
+       "impact_drop");
+    ck(cudaMemset(p_ivz_, 0, size_t(side_.nworld) * 2 * sizeof(float)),
+       "impact_vz");
+    ck(cudaMemset(p_impact_, 0, size_t(side_.nworld) * 3 * sizeof(float)),
+       "impact");
     ck(cudaMemset(
            d_alphaprev_,
            0,
@@ -527,6 +543,7 @@ class MjWarpPhysics : public Physics {
     down(host_speed_.data(), p_speed_, n * 2);
     down(host_energy_.data(), d_energy_, n * PHYS_GROUPS);
     down(host_vibration_.data(), d_vibration_, n * PHYS_GROUPS);
+    down(host_impact_.data(), p_impact_, n * 3);
     ck(cudaStreamSynchronize(nullptr), "read");
   }
 
@@ -600,6 +617,7 @@ class MjWarpPhysics : public Physics {
 
   const float* energy() const override { return host_energy_.data(); }
   const float* vibration() const override { return host_vibration_.data(); }
+  const float* impact() const override { return host_impact_.data(); }
 
  private:
   template <typename T>
@@ -666,6 +684,8 @@ class MjWarpPhysics : public Physics {
   float *p_qtarget_, *p_kp_, *p_kd_, *p_pforce_;
   float *p_q_, *p_dq_, *p_gyro_, *p_grav_, *p_quat_;
   float *p_pose_, *p_foot_, *p_speed_;
+  float *p_ipeak_, *p_idrop_, *p_ivz_, *p_impact_;
+  int* p_istance_;
   float *p_qpos_, *p_qvel_, *p_ctrl_, *p_warm_;
   int *p_alive_, *p_pjoint_, *p_pframe_;
 
@@ -678,6 +698,7 @@ class MjWarpPhysics : public Physics {
 
   std::vector<float> host_pose_, host_foot_, host_speed_;
   std::vector<float> host_energy_, host_vibration_, host_pforce_;
+  std::vector<float> host_impact_;
   std::vector<unsigned char> alive_;
   std::vector<int> host_pjoint_, host_pframe_, host_alive_;
 };

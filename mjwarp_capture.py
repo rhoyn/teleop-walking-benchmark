@@ -46,6 +46,8 @@ GROUP = [0, 0, 0, 0, 1, 1] * 2 + [2, 2, 2] + [3, 3, 3, 3, 4, 4, 4] * 2
 NM = len(JOINTS)
 NG = 5
 MAGIC = b"MJWARP01"
+TOUCH_N = wp.constant(30.0)
+LIFT_N = wp.constant(10.0)
 
 
 @wp.kernel
@@ -182,6 +184,41 @@ def k_obs_base(
     )
 
 
+@wp.kernel
+def k_impact(
+    s_force: wp.array(dtype=wp.int32),
+    s_vel: wp.array(dtype=wp.int32),
+    alive: wp.array(dtype=wp.int32),
+    sensordata: wp.array2d(dtype=wp.float32),
+    stance: wp.array2d(dtype=wp.int32),
+    stance_peak: wp.array2d(dtype=wp.float32),
+    stance_drop: wp.array2d(dtype=wp.float32),
+    foot_vz: wp.array2d(dtype=wp.float32),
+    impact: wp.array2d(dtype=wp.float32),
+):
+    w, k = wp.tid()
+    if alive[w] == 0:
+        return
+    a = s_force[k]
+    f = wp.length(
+        wp.vec3f(sensordata[w, a + 0], sensordata[w, a + 1], sensordata[w, a + 2])
+    )
+    vz = sensordata[w, s_vel[k] + 2]
+    if stance[w, k] == 0:
+        if f > TOUCH_N:
+            stance[w, k] = 1
+            stance_peak[w, k] = f
+            stance_drop[w, k] = wp.max(0.0, -foot_vz[w, k])
+    else:
+        stance_peak[w, k] = wp.max(stance_peak[w, k], f)
+        if f < LIFT_N:
+            stance[w, k] = 0
+            wp.atomic_add(impact, w, 0, 1.0)
+            wp.atomic_add(impact, w, 1, stance_drop[w, k])
+            wp.atomic_add(impact, w, 2, stance_peak[w, k])
+    foot_vz[w, k] = vz
+
+
 def need(mjm, objtype, name):
     i = mujoco.mj_name2id(mjm, objtype, name)
     if i < 0:
@@ -232,6 +269,14 @@ def main():
     s_gyro = int(mjm.sensor_adr[need(mjm, S, "imu_gyro")])
     s_pvel = int(mjm.sensor_adr[need(mjm, S, "pelvis_vel")])
     s_tvel = int(mjm.sensor_adr[need(mjm, S, "torso_vel")])
+    s_force = np.array(
+        [mjm.sensor_adr[need(mjm, S, f"{s}_foot_force")] for s in ("left", "right")],
+        np.int32,
+    )
+    s_fvel = np.array(
+        [mjm.sensor_adr[need(mjm, S, f"{s}_foot_vel")] for s in ("left", "right")],
+        np.int32,
+    )
 
     P = {
         "q_target": wp.zeros((nworld, NM), dtype=wp.float32),
@@ -249,6 +294,11 @@ def main():
         "obs_pose": wp.zeros((nworld, 7), dtype=wp.float32),
         "obs_foot": wp.zeros((nworld, 2), dtype=wp.float32),
         "obs_speed": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact_stance": wp.zeros((nworld, 2), dtype=wp.int32),
+        "impact_peak": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact_drop": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact_vz": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact": wp.zeros((nworld, 3), dtype=wp.float32),
         "qpos": d.qpos,
         "qvel": d.qvel,
         "ctrl": d.ctrl,
@@ -263,6 +313,8 @@ def main():
     c_janchor = wp.array(janchor, dtype=wp.vec3f)
     c_lo = wp.array(lo, dtype=wp.float32)
     c_hi = wp.array(hi, dtype=wp.float32)
+    c_sforce = wp.array(s_force, dtype=wp.int32)
+    c_sfvel = wp.array(s_fvel, dtype=wp.int32)
 
     def substep():
         wp.launch(
@@ -329,6 +381,18 @@ def main():
                 P["obs_pose"],
                 P["obs_foot"],
                 P["obs_speed"],
+            ],
+        )
+        wp.launch(
+            k_impact,
+            dim=(nworld, 2),
+            inputs=[c_sforce, c_sfvel, P["alive"], d.sensordata],
+            outputs=[
+                P["impact_stance"],
+                P["impact_peak"],
+                P["impact_drop"],
+                P["impact_vz"],
+                P["impact"],
             ],
         )
 

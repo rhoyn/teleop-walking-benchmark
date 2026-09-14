@@ -13,6 +13,9 @@
 
 using namespace physx;
 
+constexpr float TOUCH_N = 30.0f;
+constexpr float LIFT_N = 10.0f;
+
 namespace robot {
 namespace {
 
@@ -746,6 +749,48 @@ __global__ void k_meter(
   }
 }
 
+__global__ void k_impact(
+    const float* __restrict__ link_jforce,
+    const float* __restrict__ link_vel,
+    const unsigned char* __restrict__ alive,
+    int* __restrict__ stance,
+    float* __restrict__ stance_peak,
+    float* __restrict__ stance_drop,
+    float* __restrict__ foot_vz,
+    float* __restrict__ impact,
+    int envs,
+    int max_links,
+    int lfoot,
+    int rfoot
+) {
+  const int i = blockIdx.x * blockDim.x + threadIdx.x;
+  if (i >= envs * 2) return;
+  const int env = i / 2;
+  const int k = i - env * 2;
+  if (alive[env] == 0) return;
+
+  const int link = k == 0 ? lfoot : rfoot;
+  const float* jf = link_jforce + (size_t(env) * max_links + link) * 6;
+  const float f = sqrtf(jf[0] * jf[0] + jf[1] * jf[1] + jf[2] * jf[2]);
+  const float vz = link_vel[(size_t(env) * max_links + link) * 3 + 2];
+  if (stance[i] == 0) {
+    if (f > TOUCH_N) {
+      stance[i] = 1;
+      stance_peak[i] = f;
+      stance_drop[i] = fmaxf(0.0f, -foot_vz[i]);
+    }
+  } else {
+    stance_peak[i] = fmaxf(stance_peak[i], f);
+    if (f < LIFT_N) {
+      stance[i] = 0;
+      atomicAdd(impact + env * 3 + 0, 1.0f);
+      atomicAdd(impact + env * 3 + 1, stance_drop[i]);
+      atomicAdd(impact + env * 3 + 2, stance_peak[i]);
+    }
+  }
+  foot_vz[i] = vz;
+}
+
 __global__ void k_scatter_targets(
     const float* __restrict__ q_target,
     const int* __restrict__ dof_of_motor,
@@ -864,7 +909,10 @@ World::~World() {
                   (void*)d_alive,        (void*)d_fell_at,
                   (void*)d_punch_force,  (void*)d_punch_torque,
                   (void*)d_punch_link,   (void*)d_link_torque,
-                  (void*)d_energy,       (void*)d_vibration}) {
+                  (void*)d_energy,       (void*)d_vibration,
+                  (void*)d_link_jforce,  (void*)d_stance,
+                  (void*)d_stance_peak,  (void*)d_stance_drop,
+                  (void*)d_foot_vz,      (void*)d_impact}) {
     if (p != nullptr) cudaFree(p);
   }
 }
@@ -961,6 +1009,13 @@ World* world_make(
   w->d_energy = device_zeros<float>(static_cast<size_t>(w->envs) * NUM_GROUPS);
   w->d_vibration =
       device_zeros<float>(static_cast<size_t>(w->envs) * NUM_GROUPS);
+
+  w->d_link_jforce = device_zeros<float>(links * 6);
+  w->d_stance = device_zeros<int>(static_cast<size_t>(w->envs) * 2);
+  w->d_stance_peak = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
+  w->d_stance_drop = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
+  w->d_foot_vz = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
+  w->d_impact = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
 
   return w;
 }
@@ -1222,6 +1277,41 @@ void world_meter(
   cuda_ok(cudaGetLastError(), "k_meter");
 }
 
+void world_impact(
+    World& w,
+    int lfoot,
+    int rfoot
+) {
+  read_into(
+      w,
+      w.d_link_jforce,
+      PxArticulationGPUAPIReadType::eLINK_INCOMING_JOINT_FORCE,
+      "link incoming joint force"
+  );
+  read_into(
+      w,
+      w.d_link_vel,
+      PxArticulationGPUAPIReadType::eLINK_LINEAR_VELOCITY,
+      "link linear velocity"
+  );
+  const int threads = 128;
+  k_impact<<<blocks_for(w.envs * 2, threads), threads>>>(
+      w.d_link_jforce,
+      w.d_link_vel,
+      w.d_alive,
+      w.d_stance,
+      w.d_stance_peak,
+      w.d_stance_drop,
+      w.d_foot_vz,
+      w.d_impact,
+      w.envs,
+      w.max_links,
+      lfoot,
+      rfoot
+  );
+  cuda_ok(cudaGetLastError(), "k_impact");
+}
+
 void world_reset(
     World& w,
     const double* stance,
@@ -1341,6 +1431,25 @@ void world_reset(
           static_cast<size_t>(w.envs) * NUM_GROUPS * sizeof(float)
       ),
       "reset vibration"
+  );
+  const size_t feet = static_cast<size_t>(w.envs) * 2;
+  cuda_ok(cudaMemset(w.d_stance, 0, feet * sizeof(int)), "reset stance");
+  cuda_ok(
+      cudaMemset(w.d_stance_peak, 0, feet * sizeof(float)),
+      "reset stance peak"
+  );
+  cuda_ok(
+      cudaMemset(w.d_stance_drop, 0, feet * sizeof(float)),
+      "reset stance drop"
+  );
+  cuda_ok(cudaMemset(w.d_foot_vz, 0, feet * sizeof(float)), "reset foot vz");
+  cuda_ok(
+      cudaMemset(
+          w.d_impact,
+          0,
+          static_cast<size_t>(w.envs) * 3 * sizeof(float)
+      ),
+      "reset impact"
   );
   w.time = 0.0;
 }
@@ -1510,6 +1619,7 @@ class PhysxPhysics : public Physics {
     alive_.assign(size_t(n), 1);
     energy_.assign(size_t(n) * PHYS_GROUPS, 0.0f);
     vibration_.assign(size_t(n) * PHYS_GROUPS, 0.0f);
+    impact_.assign(size_t(n) * 3, 0.0f);
     punch_force_.assign(size_t(n) * 3, 0.0f);
     punch_torque_.assign(size_t(n) * 3, 0.0f);
     punch_link_.assign(size_t(n), -1);
@@ -1658,6 +1768,7 @@ class PhysxPhysics : public Physics {
     for (int k = 0; k < substeps; ++k) {
       world::world_apply_punches(*world_);
       world::world_step(*world_);
+      world::world_impact(*world_, lfoot_, rfoot_);
     }
   }
 
@@ -1688,6 +1799,10 @@ class PhysxPhysics : public Physics {
     );
     return vibration_.data();
   }
+  const float* impact() const override {
+    world::world_fetch(world_->d_impact, impact_.data(), impact_.size());
+    return impact_.data();
+  }
 
  private:
   const mjcf::Model& model_;
@@ -1700,7 +1815,7 @@ class PhysxPhysics : public Physics {
   std::vector<double> joint_anchor_;
   std::vector<float> host_pose_, host_foot_, host_link_;
   std::vector<float> host_speed_, host_link_vel_;
-  mutable std::vector<float> energy_, vibration_;
+  mutable std::vector<float> energy_, vibration_, impact_;
   std::vector<float> punch_force_, punch_torque_;
   std::vector<int> punch_link_;
   std::vector<unsigned char> alive_;

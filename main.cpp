@@ -905,6 +905,8 @@ struct Run {
   double seg_vibration[WAYPOINTS][PHYS_GROUPS] = {};
   double taken_energy[PHYS_GROUPS] = {};
   double taken_vibration[PHYS_GROUPS] = {};
+  double seg_impact[WAYPOINTS][3] = {};
+  double taken_impact[3] = {};
   double pos_err_sum = 0.0, yaw_err_sum = 0.0;
   double pelvis_speed = 0.0, head_speed = 0.0;
   double last_dist = 0.0, last_yaw_err = 0.0;
@@ -1580,15 +1582,23 @@ void close_segment(
     int env,
     int segment,
     const float* energy,
-    const float* vibration
+    const float* vibration,
+    const float* impact
 ) {
-  if (segment < 0 || segment >= WAYPOINTS) return;
+  const bool keep = segment >= 0 && segment < WAYPOINTS;
   for (int g = 0; g < PHYS_GROUPS; ++g) {
     const size_t at = size_t(env) * PHYS_GROUPS + size_t(g);
-    r.seg_energy[segment][g] = energy[at] - r.taken_energy[g];
-    r.seg_vibration[segment][g] = vibration[at] - r.taken_vibration[g];
+    if (keep) {
+      r.seg_energy[segment][g] = energy[at] - r.taken_energy[g];
+      r.seg_vibration[segment][g] = vibration[at] - r.taken_vibration[g];
+    }
     r.taken_energy[g] = energy[at];
     r.taken_vibration[g] = vibration[at];
+  }
+  for (int k = 0; k < 3; ++k) {
+    const size_t at = size_t(env) * 3 + size_t(k);
+    if (keep) r.seg_impact[segment][k] = impact[at] - r.taken_impact[k];
+    r.taken_impact[k] = impact[at];
   }
 }
 
@@ -1880,6 +1890,7 @@ int run(
       const float* speed = phys->body_speed();
       const float* cost_e = phys->energy();
       const float* cost_v = phys->vibration();
+      const float* cost_i = phys->impact();
 
       view_has = false;
       for (int e = 0; e < envs; ++e) {
@@ -1984,7 +1995,9 @@ int run(
               r.pos_err_sum += r.last_dist * 100.0;
               r.yaw_err_sum += std::fabs(r.last_yaw_err) * 180.0 / M_PI;
               ++r.scored;
-              close_segment(r, e, r.current_target, cost_e, cost_v);
+              close_segment(r, e, r.current_target, cost_e, cost_v, cost_i);
+            } else if (r.current_target < 0) {
+              close_segment(r, e, -1, cost_e, cost_v, cost_i);
             }
             r.current_target = index;
             r.pos_reached = false;
@@ -2227,6 +2240,10 @@ int run(
   const unsigned char* h_alive = phys->alive();
   const float* final_e = phys->energy();
   const float* final_v = phys->vibration();
+  const float* final_i = phys->impact();
+  double robot_mass = 0.0;
+  for (const mjcf::Body& b : model.bodies) robot_mass += b.inertial.mass;
+  const double body_weight = robot_mass * 9.81;
   for (int e = 0; e < envs; ++e) {
     Run& r = runs[size_t(e)];
     if (r.have_last && r.current_target >= 0) {
@@ -2234,7 +2251,7 @@ int run(
       r.yaw_err_sum += std::fabs(r.last_yaw_err) * 180.0 / M_PI;
       ++r.scored;
     }
-    close_segment(r, e, r.current_target, final_e, final_v);
+    close_segment(r, e, r.current_target, final_e, final_v, final_i);
     r.alive = h_alive[size_t(e)] != 0;
   }
 
@@ -2250,6 +2267,8 @@ int run(
     for (const char* g : COST_GROUPS) {
       out << ",s" << i << "_v_" << g << "_krads2";
     }
+    out << ",s" << i << "_steps,s" << i << "_touchdown_mps,s" << i
+        << "_peak_grf_bw";
   }
   out << '\n';
   int complete = 0;
@@ -2273,6 +2292,15 @@ int run(
       for (int g = 0; g < PHYS_GROUPS; ++g) {
         out << ',';
         if (reached) out << r.seg_vibration[i][g] * 1e-3;
+      }
+      const double steps = r.seg_impact[i][0];
+      out << ',';
+      if (reached) out << steps;
+      out << ',';
+      if (reached && steps > 0.0) out << r.seg_impact[i][1] / steps;
+      out << ',';
+      if (reached && steps > 0.0) {
+        out << r.seg_impact[i][2] / steps / body_weight;
       }
     }
     out << '\n';

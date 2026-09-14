@@ -130,6 +130,13 @@ struct World {
   float* d_energy = nullptr;
   float* d_vibration = nullptr;
 
+  float* d_link_jforce = nullptr;
+  int* d_stance = nullptr;
+  float* d_stance_peak = nullptr;
+  float* d_stance_drop = nullptr;
+  float* d_foot_vz = nullptr;
+  float* d_impact = nullptr;
+
   ~World();
 };
 
@@ -163,6 +170,12 @@ void world_check_falls(
 void world_meter(
     World& w,
     double dt
+);
+
+void world_impact(
+    World& w,
+    int lfoot,
+    int rfoot
 );
 
 void world_reset(
