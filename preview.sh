@@ -2,7 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-JOBS=${JOBS:-8}
+NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "  MIG ")
+[ "$NGPUS" -ge 1 ] || NGPUS=$(nvidia-smi -L 2>/dev/null | grep -c "^GPU ")
+[ "$NGPUS" -ge 1 ] || NGPUS=1
+JOBS=${JOBS:-$((8 * NGPUS))}
 RUNID=${RUNID:-0}
 NICE=${NICE:-10}
 CPUS=1-$(($(nproc) - 1))
