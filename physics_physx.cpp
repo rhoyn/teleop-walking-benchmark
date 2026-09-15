@@ -756,8 +756,10 @@ __global__ void k_impact(
     int* __restrict__ stance,
     float* __restrict__ stance_peak,
     float* __restrict__ stance_drop,
+    float* __restrict__ stance_work,
     float* __restrict__ foot_vz,
     float* __restrict__ impact,
+    float dt,
     int envs,
     int max_links,
     int lfoot,
@@ -773,19 +775,23 @@ __global__ void k_impact(
   const float* jf = link_jforce + (size_t(env) * max_links + link) * 6;
   const float f = sqrtf(jf[0] * jf[0] + jf[1] * jf[1] + jf[2] * jf[2]);
   const float vz = link_vel[(size_t(env) * max_links + link) * 3 + 2];
+  const float down = fmaxf(0.0f, -0.5f * (foot_vz[i] + vz));
   if (stance[i] == 0) {
     if (f > TOUCH_N) {
       stance[i] = 1;
       stance_peak[i] = f;
       stance_drop[i] = fmaxf(0.0f, -foot_vz[i]);
+      stance_work[i] = f * down * dt;
     }
   } else {
+    stance_work[i] += f * down * dt;
     stance_peak[i] = fmaxf(stance_peak[i], f);
     if (f < LIFT_N) {
       stance[i] = 0;
-      atomicAdd(impact + env * 3 + 0, 1.0f);
-      atomicAdd(impact + env * 3 + 1, stance_drop[i]);
-      atomicAdd(impact + env * 3 + 2, stance_peak[i]);
+      atomicAdd(impact + env * 4 + 0, 1.0f);
+      atomicAdd(impact + env * 4 + 1, stance_drop[i]);
+      atomicAdd(impact + env * 4 + 2, stance_peak[i]);
+      atomicAdd(impact + env * 4 + 3, stance_work[i]);
     }
   }
   foot_vz[i] = vz;
@@ -912,7 +918,8 @@ World::~World() {
                   (void*)d_energy,       (void*)d_vibration,
                   (void*)d_link_jforce,  (void*)d_stance,
                   (void*)d_stance_peak,  (void*)d_stance_drop,
-                  (void*)d_foot_vz,      (void*)d_impact}) {
+                  (void*)d_stance_work,  (void*)d_foot_vz,
+                  (void*)d_impact}) {
     if (p != nullptr) cudaFree(p);
   }
 }
@@ -1014,8 +1021,9 @@ World* world_make(
   w->d_stance = device_zeros<int>(static_cast<size_t>(w->envs) * 2);
   w->d_stance_peak = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
   w->d_stance_drop = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
+  w->d_stance_work = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
   w->d_foot_vz = device_zeros<float>(static_cast<size_t>(w->envs) * 2);
-  w->d_impact = device_zeros<float>(static_cast<size_t>(w->envs) * 3);
+  w->d_impact = device_zeros<float>(static_cast<size_t>(w->envs) * 4);
 
   return w;
 }
@@ -1302,8 +1310,10 @@ void world_impact(
       w.d_stance,
       w.d_stance_peak,
       w.d_stance_drop,
+      w.d_stance_work,
       w.d_foot_vz,
       w.d_impact,
+      static_cast<float>(w.timestep),
       w.envs,
       w.max_links,
       lfoot,
@@ -1442,12 +1452,16 @@ void world_reset(
       cudaMemset(w.d_stance_drop, 0, feet * sizeof(float)),
       "reset stance drop"
   );
+  cuda_ok(
+      cudaMemset(w.d_stance_work, 0, feet * sizeof(float)),
+      "reset stance work"
+  );
   cuda_ok(cudaMemset(w.d_foot_vz, 0, feet * sizeof(float)), "reset foot vz");
   cuda_ok(
       cudaMemset(
           w.d_impact,
           0,
-          static_cast<size_t>(w.envs) * 3 * sizeof(float)
+          static_cast<size_t>(w.envs) * 4 * sizeof(float)
       ),
       "reset impact"
   );
@@ -1619,7 +1633,7 @@ class PhysxPhysics : public Physics {
     alive_.assign(size_t(n), 1);
     energy_.assign(size_t(n) * PHYS_GROUPS, 0.0f);
     vibration_.assign(size_t(n) * PHYS_GROUPS, 0.0f);
-    impact_.assign(size_t(n) * 3, 0.0f);
+    impact_.assign(size_t(n) * 4, 0.0f);
     punch_force_.assign(size_t(n) * 3, 0.0f);
     punch_torque_.assign(size_t(n) * 3, 0.0f);
     punch_link_.assign(size_t(n), -1);

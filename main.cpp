@@ -905,8 +905,8 @@ struct Run {
   double seg_vibration[WAYPOINTS][PHYS_GROUPS] = {};
   double taken_energy[PHYS_GROUPS] = {};
   double taken_vibration[PHYS_GROUPS] = {};
-  double seg_impact[WAYPOINTS][3] = {};
-  double taken_impact[3] = {};
+  double seg_impact[WAYPOINTS][4] = {};
+  double taken_impact[4] = {};
   double pos_err_sum = 0.0, yaw_err_sum = 0.0;
   double pelvis_speed = 0.0, head_speed = 0.0;
   double last_dist = 0.0, last_yaw_err = 0.0;
@@ -1595,8 +1595,8 @@ void close_segment(
     r.taken_energy[g] = energy[at];
     r.taken_vibration[g] = vibration[at];
   }
-  for (int k = 0; k < 3; ++k) {
-    const size_t at = size_t(env) * 3 + size_t(k);
+  for (int k = 0; k < 4; ++k) {
+    const size_t at = size_t(env) * 4 + size_t(k);
     if (keep) r.seg_impact[segment][k] = impact[at] - r.taken_impact[k];
     r.taken_impact[k] = impact[at];
   }
@@ -2268,7 +2268,7 @@ int run(
       out << ",s" << i << "_v_" << g << "_krads2";
     }
     out << ",s" << i << "_steps,s" << i << "_touchdown_mps,s" << i
-        << "_peak_grf_bw";
+        << "_peak_grf_bw,s" << i << "_stomp_j";
   }
   out << '\n';
   int complete = 0;
@@ -2302,6 +2302,8 @@ int run(
       if (reached && steps > 0.0) {
         out << r.seg_impact[i][2] / steps / body_weight;
       }
+      out << ',';
+      if (reached && steps > 0.0) out << r.seg_impact[i][3] / steps;
     }
     out << '\n';
     if (done && r.scored) {

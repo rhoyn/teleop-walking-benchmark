@@ -186,6 +186,7 @@ def k_obs_base(
 
 @wp.kernel
 def k_impact(
+    dt: float,
     s_force: wp.array(dtype=wp.int32),
     s_vel: wp.array(dtype=wp.int32),
     alive: wp.array(dtype=wp.int32),
@@ -193,6 +194,8 @@ def k_impact(
     stance: wp.array2d(dtype=wp.int32),
     stance_peak: wp.array2d(dtype=wp.float32),
     stance_drop: wp.array2d(dtype=wp.float32),
+    stance_work: wp.array2d(dtype=wp.float32),
+    foot_f: wp.array2d(dtype=wp.float32),
     foot_vz: wp.array2d(dtype=wp.float32),
     impact: wp.array2d(dtype=wp.float32),
 ):
@@ -209,13 +212,18 @@ def k_impact(
             stance[w, k] = 1
             stance_peak[w, k] = f
             stance_drop[w, k] = wp.max(0.0, -foot_vz[w, k])
+            stance_work[w, k] = 0.0
     else:
+        down = wp.max(0.0, -0.5 * (foot_vz[w, k] + vz))
+        stance_work[w, k] += foot_f[w, k] * down * dt
         stance_peak[w, k] = wp.max(stance_peak[w, k], f)
         if f < LIFT_N:
             stance[w, k] = 0
             wp.atomic_add(impact, w, 0, 1.0)
             wp.atomic_add(impact, w, 1, stance_drop[w, k])
             wp.atomic_add(impact, w, 2, stance_peak[w, k])
+            wp.atomic_add(impact, w, 3, stance_work[w, k])
+    foot_f[w, k] = f
     foot_vz[w, k] = vz
 
 
@@ -297,8 +305,10 @@ def main():
         "impact_stance": wp.zeros((nworld, 2), dtype=wp.int32),
         "impact_peak": wp.zeros((nworld, 2), dtype=wp.float32),
         "impact_drop": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact_work": wp.zeros((nworld, 2), dtype=wp.float32),
+        "impact_f": wp.zeros((nworld, 2), dtype=wp.float32),
         "impact_vz": wp.zeros((nworld, 2), dtype=wp.float32),
-        "impact": wp.zeros((nworld, 3), dtype=wp.float32),
+        "impact": wp.zeros((nworld, 4), dtype=wp.float32),
         "qpos": d.qpos,
         "qvel": d.qvel,
         "ctrl": d.ctrl,
@@ -386,11 +396,19 @@ def main():
         wp.launch(
             k_impact,
             dim=(nworld, 2),
-            inputs=[c_sforce, c_sfvel, P["alive"], d.sensordata],
+            inputs=[
+                float(mjm.opt.timestep),
+                c_sforce,
+                c_sfvel,
+                P["alive"],
+                d.sensordata,
+            ],
             outputs=[
                 P["impact_stance"],
                 P["impact_peak"],
                 P["impact_drop"],
+                P["impact_work"],
+                P["impact_f"],
                 P["impact_vz"],
                 P["impact"],
             ],

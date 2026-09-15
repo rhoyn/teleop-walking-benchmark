@@ -134,6 +134,7 @@ struct World {
   int* d_stance = nullptr;
   float* d_stance_peak = nullptr;
   float* d_stance_drop = nullptr;
+  float* d_stance_work = nullptr;
   float* d_foot_vz = nullptr;
   float* d_impact = nullptr;
 
