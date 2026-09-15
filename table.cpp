@@ -74,10 +74,8 @@ struct Totals {
   double walk_v_px = 0.0;
   double steps_mj = 0.0;
   double steps_px = 0.0;
-  double touchdown_mj = 0.0;
-  double touchdown_px = 0.0;
-  double peak_mj = 0.0;
-  double peak_px = 0.0;
+  double stomp_mj = 0.0;
+  double stomp_px = 0.0;
 };
 
 void split(
@@ -275,8 +273,7 @@ void accumulate(
   std::vector<size_t> energy;
   std::vector<size_t> vibration;
   std::vector<size_t> steps;
-  std::vector<size_t> touchdown;
-  std::vector<size_t> peak;
+  std::vector<size_t> stomp;
   size_t widest = 0;
   for (int seg = 0;; ++seg) {
     const std::string prefix = "s" + std::to_string(seg) + "_";
@@ -287,11 +284,10 @@ void accumulate(
       vibration.push_back(column(index, prefix + "v_" + group + "_krads2"));
       widest = std::max({widest, energy.back(), vibration.back()});
     }
-    if (index.find(prefix + "steps") != index.end()) {
+    if (index.find(prefix + "stomp_j") != index.end()) {
       steps.push_back(column(index, prefix + "steps"));
-      touchdown.push_back(column(index, prefix + "touchdown_mps"));
-      peak.push_back(column(index, prefix + "peak_grf_bw"));
-      widest = std::max({widest, steps.back(), touchdown.back(), peak.back()});
+      stomp.push_back(column(index, prefix + "stomp_j"));
+      widest = std::max({widest, steps.back(), stomp.back()});
     }
   }
   if (energy.empty()) {
@@ -351,27 +347,24 @@ void accumulate(
       for (const size_t at : vibration) v += number(field[at]);
       t.walk_e += e;
       t.walk_v += v;
-      double n = 0.0, td = 0.0, pk = 0.0;
+      double n = 0.0, st = 0.0;
       for (size_t i = 0; i < steps.size(); ++i) {
         const double k = number(field[steps[i]]);
         n += k;
-        td += k * number(field[touchdown[i]]);
-        pk += k * number(field[peak[i]]);
+        st += k * number(field[stomp[i]]);
       }
       if (mujoco) {
         ++t.finished_mj;
         t.walk_e_mj += e;
         t.walk_v_mj += v;
         t.steps_mj += n;
-        t.touchdown_mj += td;
-        t.peak_mj += pk;
+        t.stomp_mj += st;
       } else {
         ++t.finished_px;
         t.walk_e_px += e;
         t.walk_v_px += v;
         t.steps_px += n;
-        t.touchdown_px += td;
-        t.peak_px += pk;
+        t.stomp_px += st;
       }
     }
   }
@@ -480,8 +473,7 @@ std::string row(
           1,
           0.001
       ),
-      per_step(t, t.touchdown_mj, t.touchdown_px, 2),
-      per_step(t, t.peak_mj, t.peak_px, 2)
+      per_step(t, t.stomp_mj, t.stomp_px, 1)
   };
 
   const bool unranked = is_unranked(name);
@@ -521,9 +513,8 @@ int main(
                  "deg<br>mujoco<br>physx "
                  "| walk<br>energy<br>KJ<br>mujoco<br>physx "
                  "| walk<br>vibrations<br>mujoco<br>physx "
-                 "| foot<br>touchdown<br>m/s<br>mujoco<br>physx "
-                 "| peak<br>foot<br>force<br>BW<br>mujoco<br>physx |\n"
-              << "|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n";
+                 "| stomp<br>energy<br>J<br>mujoco<br>physx |\n"
+              << "|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n";
     for (const std::string& name : table::ordered(totals)) {
       std::cout << table::row(name, totals.at(name)) << '\n';
     }
